@@ -40,14 +40,14 @@ if __name__ == '__main__':
         
         # Image settings
         imgsz=640,
-        batch=32,  # Reduce to 8 if GPU memory error
+        batch=8,  # REDUCED from 32 - smaller batches improve generalization
         
         # Device
         device=0,  # Use GPU 0, change to 'cpu' if no GPU
         
         # Optimizer
         optimizer='AdamW',
-        lr0=0.001,      # Initial learning rate
+        lr0=0.0005,     # Initial learning rate (REDUCED from 0.001 - prevents overfitting)
         lrf=0.01,       # Final learning rate (lr0 * lrf)
         momentum=0.937,
         weight_decay=0.0005,
@@ -72,12 +72,12 @@ if __name__ == '__main__':
         
         # Advanced augmentations
         mosaic=1.0,        # 100% mosaic (combine 4 images)
-        mixup=0.3,         # 30% mixup (blend 2 images)
-        copy_paste=0.5,    # 50% copy-paste objects
+        mixup=0.15,        # REDUCED from 0.3 - less aggressive blending
+        copy_paste=0.0,    # DISABLED - was causing overfitting
         
         # Regularization
         label_smoothing=0.1,
-        erasing=0.4,       # Random erasing
+        # erasing=0.4,     # REMOVED - was too aggressive and caused overfitting
         
         # Loss weights
         box=7.5,           # Box loss weight
