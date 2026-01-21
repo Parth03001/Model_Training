@@ -17,20 +17,42 @@ if __name__ == '__main__':
 
     model_size = 'm'  # RECOMMENDED for 6388 images
 
+    # Training output directory
+    project_dir = './wheel_training'
+    run_name = 'yolo11m_4class_aggressive_aug'
+    checkpoint_path = Path(project_dir) / run_name / 'weights' / 'last.pt'
+
     print(f"\n{'='*60}")
     print(f"🚀 TRAINING YOLO11-{model_size.upper()} ON 4-CLASS DATASET")
     print(f"{'='*60}")
     print(f"\nDataset: 6388 images")
     print(f"Classes: rim_black, cap_black, rim_grey, cap_grey")
-    print(f"Model: yolo11{model_size}.pt\n")
 
     # ============================================
-    # OPTION A: AGGRESSIVE AUGMENTATION (RECOMMENDED)
+    # AUTO-RESUME FUNCTIONALITY
     # ============================================
+    # Check if previous training checkpoint exists
+    resume_training = False
+    if checkpoint_path.exists():
+        print(f"\n🔄 RESUME MODE: Found checkpoint at {checkpoint_path}")
+        print(f"   Resuming training from previous session...")
+        model = YOLO(checkpoint_path)  # Load from checkpoint
+        resume_training = True
+    else:
+        print(f"\n🆕 FRESH START: No checkpoint found")
+        print(f"   Starting new training from yolo11{model_size}.pt pretrained weights")
+        model = YOLO(f'yolo11{model_size}.pt')  # Load pretrained weights
 
-    model = YOLO(f'yolo11{model_size}.pt')
+    print()
+
+    # ============================================
+    # TRAINING CONFIGURATION
+    # ============================================
 
     results = model.train(
+        # Resume from checkpoint if exists
+        resume=resume_training,
+
         # Dataset
         data=data_yaml,
         
@@ -93,9 +115,9 @@ if __name__ == '__main__':
         
         # Save settings
         save=True,
-        save_period=10,    # Save every 10 epochs
-        project='./wheel_training',
-        name='yolo11m_4class_aggressive_aug',
+        save_period=10,    # Save every 10 epochs (creates checkpoints)
+        project=project_dir,
+        name=run_name,
         exist_ok=True,
         
         # Performance
@@ -106,4 +128,8 @@ if __name__ == '__main__':
     print(f"\n{'='*60}")
     print(f"✅ TRAINING COMPLETE!")
     print(f"{'='*60}")
+    print(f"\n📁 Model saved to: {checkpoint_path.parent / 'best.pt'}")
+    print(f"📁 Checkpoint saved to: {checkpoint_path}")
+    print(f"\n💡 TIP: If training was interrupted, simply run this script again")
+    print(f"   It will automatically resume from the last checkpoint!")
 
