@@ -1,0 +1,33 @@
+  Primary Objective: Evaluate the feasibility of replacing an underperforming YOLOv26 model with
+  Florence-2 for a fine-grained classification task.
+
+  Context:
+  I am currently using train_wheel_yolov26.py with a YOLOv26 model, but it is failing to accurately detect and
+  classify my data. I suspect the model is struggling with the subtle differences between categories.
+  I would like to investigate if the Florence-2 VLM is a better solution.
+
+  And i have tried all the possible solution for yolo wih heacy agumnetation with low aguumanetion low bacth size low learning rate but n use and i saw thie florcne i think ti goo give me hoenst reaction thos 
+
+  Dataset Structure (`Model_Training\Wheel_Data`):
+  The dataset is divided into four distinct categories based on the color combination of the Wheel Rim
+  and the Center Cap:
+   1. AX7: Black Rim + Black Cap (Correct)
+   2. AX7_NOT_OK: Black Rim + Grey Cap (Incorrect)
+   3. AX7L: Grey Rim + Grey Cap (Correct)
+   4. AX7L_NOT_OK: Grey Rim + Black Cap (Incorrect)
+
+  Instructions:
+  Please strictly follow this step-by-step analysis plan. Do not write any code yet.
+
+   1. Deep Image Analysis: Systematically read and analyze sample images from each of the four folders
+      one by one (to manage token limits). Pay close attention to the visual distinction between the
+      rims and caps.
+   2. Resource Review: Read and summarize the key insights from this article: Florence-2 on Medium
+      (https://medium.com/data-science/florence-2-mastering-multiple-vision-tasks-with-a-single-vlm-mo
+      del-435d251976d0). Specifically, look for information on:
+       * Object detection capabilities.
+       * Fine-tuning procedures for custom datasets.
+   3. Feasibility & Strategy: Based on the image analysis and the article:
+       * Assess if Florence-2 is capable of learning these specific fine-grained distinctions.
+       * Explain the required data labeling format for Florence-2.
+       * Outline a high-level plan for fine-tuning the model on this custom data.
