@@ -60,8 +60,16 @@ class WheelDataset(Dataset):
 
 def get_transforms(is_train=False):
     """
-    Light augmentation for training; plain normalize for val/test.
+    YOLO-style augmentation for training; plain normalize for val/test.
     Images are already 224x224 from preprocessing.
+
+    Augmentations inspired by YOLO training:
+    - Rotation up to 20 degrees
+    - Random zoom in/out via RandomResizedCrop
+    - Horizontal & vertical flip
+    - Color jitter (brightness, contrast, saturation)
+    - Random affine (small translate + shear)
+    - Random erasing for regularization
     """
     normalize = transforms.Normalize(
         mean=[0.485, 0.456, 0.406],
@@ -70,11 +78,21 @@ def get_transforms(is_train=False):
 
     if is_train:
         return transforms.Compose([
+            # Zoom in/out: crop between 80-100% of image then resize back
+            transforms.RandomResizedCrop(224, scale=(0.80, 1.0), ratio=(0.9, 1.1)),
             transforms.RandomHorizontalFlip(p=0.5),
-            transforms.RandomRotation(10),
-            transforms.ColorJitter(brightness=0.1, contrast=0.1),
+            transforms.RandomVerticalFlip(p=0.3),
+            transforms.RandomRotation(20),
+            transforms.RandomAffine(
+                degrees=0, translate=(0.08, 0.08), shear=5
+            ),
+            transforms.ColorJitter(
+                brightness=0.15, contrast=0.15, saturation=0.1, hue=0.02
+            ),
             transforms.ToTensor(),
             normalize,
+            # Random erasing like YOLO cutout
+            transforms.RandomErasing(p=0.15, scale=(0.02, 0.1)),
         ])
     else:
         return transforms.Compose([
@@ -205,7 +223,7 @@ def main(args):
     model = build_model(num_classes=num_classes, dropout=args.dropout)
     model.to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
 
     # ── Phase 1: Frozen backbone ─────────────────────────────────────────
     print(f"\n{'='*60}")
@@ -325,14 +343,14 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train EfficientNet-B0 for wheel classification")
     parser.add_argument("--data", type=str, default="Wheel_Split", help="Split dataset folder")
-    parser.add_argument("--epochs", type=int, default=30, help="Total epochs (default 30)")
-    parser.add_argument("--freeze-epochs", type=int, default=5, help="Epochs with frozen backbone (default 5)")
+    parser.add_argument("--epochs", type=int, default=50, help="Total epochs (default 50)")
+    parser.add_argument("--freeze-epochs", type=int, default=8, help="Epochs with frozen backbone (default 8)")
     parser.add_argument("--batch-size", type=int, default=8, help="Batch size (default 8)")
-    parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate for frozen phase (default 1e-4)")
-    parser.add_argument("--lr-finetune", type=float, default=1e-5, help="Learning rate for fine-tune phase (default 1e-5)")
+    parser.add_argument("--lr", type=float, default=5e-5, help="Learning rate for frozen phase (default 5e-5)")
+    parser.add_argument("--lr-finetune", type=float, default=5e-6, help="Learning rate for fine-tune phase (default 5e-6)")
     parser.add_argument("--weight-decay", type=float, default=0.01, help="Weight decay (default 0.01)")
-    parser.add_argument("--dropout", type=float, default=0.3, help="Classifier dropout (default 0.3)")
-    parser.add_argument("--patience", type=int, default=7, help="Early stopping patience (default 7)")
+    parser.add_argument("--dropout", type=float, default=0.35, help="Classifier dropout (default 0.35)")
+    parser.add_argument("--patience", type=int, default=10, help="Early stopping patience (default 10)")
     parser.add_argument("--workers", type=int, default=2, help="Dataloader workers (default 2)")
     parser.add_argument("--save-dir", type=str, default="wheel_model_output", help="Save directory")
     args = parser.parse_args()
