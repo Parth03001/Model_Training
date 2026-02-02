@@ -1,14 +1,15 @@
 """
-Step 2: EfficientNet-B0 Training for 4-Class Wheel Classification
+Step 2: EfficientNetV2-S Training for 4-Class Wheel Classification
 
-Conservative setup to avoid overfitting:
+Setup:
+- EfficientNetV2-S backbone (384x384 input, 21.5M params)
 - Freeze backbone for first N epochs, then unfreeze with lower lr
-- Light augmentation only (factory images are consistent)
+- YOLO-style augmentation + label smoothing
 - Early stopping + dropout on classifier head
 - Cosine annealing lr schedule
 
 Usage:
-    python train_wheel_efficientnet.py --data Wheel_Split --epochs 30
+    python train_wheel_efficientnet.py --data Wheel_Split --epochs 50
 """
 
 import torch
@@ -58,10 +59,13 @@ class WheelDataset(Dataset):
 
 # ── Transforms ───────────────────────────────────────────────────────────────
 
+IMG_SIZE = 384  # EfficientNetV2-S native input resolution
+
+
 def get_transforms(is_train=False):
     """
     YOLO-style augmentation for training; plain normalize for val/test.
-    Images are already 224x224 from preprocessing.
+    Images are preprocessed at 384x384 for EfficientNetV2-S.
 
     Augmentations inspired by YOLO training:
     - Rotation up to 20 degrees
@@ -79,7 +83,7 @@ def get_transforms(is_train=False):
     if is_train:
         return transforms.Compose([
             # Zoom in/out: crop between 80-100% of image then resize back
-            transforms.RandomResizedCrop(224, scale=(0.80, 1.0), ratio=(0.9, 1.1)),
+            transforms.RandomResizedCrop(IMG_SIZE, scale=(0.80, 1.0), ratio=(0.9, 1.1)),
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomVerticalFlip(p=0.3),
             transforms.RandomRotation(20),
@@ -96,6 +100,7 @@ def get_transforms(is_train=False):
         ])
     else:
         return transforms.Compose([
+            transforms.Resize(IMG_SIZE),
             transforms.ToTensor(),
             normalize,
         ])
@@ -104,10 +109,10 @@ def get_transforms(is_train=False):
 # ── Model ────────────────────────────────────────────────────────────────────
 
 def build_model(num_classes=4, dropout=0.3):
-    """EfficientNet-B0 with custom classifier head."""
-    from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
+    """EfficientNetV2-S with custom classifier head."""
+    from torchvision.models import efficientnet_v2_s, EfficientNet_V2_S_Weights
 
-    model = efficientnet_b0(weights=EfficientNet_B0_Weights.IMAGENET1K_V1)
+    model = efficientnet_v2_s(weights=EfficientNet_V2_S_Weights.IMAGENET1K_V1)
 
     in_features = model.classifier[1].in_features
     model.classifier = nn.Sequential(
@@ -341,7 +346,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train EfficientNet-B0 for wheel classification")
+    parser = argparse.ArgumentParser(description="Train EfficientNetV2-S for wheel classification")
     parser.add_argument("--data", type=str, default="Wheel_Split", help="Split dataset folder")
     parser.add_argument("--epochs", type=int, default=50, help="Total epochs (default 50)")
     parser.add_argument("--freeze-epochs", type=int, default=8, help="Epochs with frozen backbone (default 8)")

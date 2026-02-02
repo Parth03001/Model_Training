@@ -78,9 +78,9 @@ def normalize_white_balance(image):
     return result.astype(np.uint8)
 
 
-def process_dataset(input_dir, output_dir, crop_ratio=0.55, clahe_clip=3.0, target_size=224):
+def process_dataset(input_dir, output_dir, crop_ratio=0.55, clahe_clip=3.0, target_size=384):
     """
-    Process all images: crop hub -> light CLAHE -> resize.
+    Process all images: crop hub -> white balance -> CLAHE -> gamma -> resize.
     Maintains folder structure.
     """
     input_path = Path(input_dir)
@@ -150,12 +150,12 @@ def process_dataset(input_dir, output_dir, crop_ratio=0.55, clahe_clip=3.0, targ
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Preprocess wheel images: crop hub + light CLAHE")
+    parser = argparse.ArgumentParser(description="Preprocess wheel images: crop + white balance + CLAHE + gamma")
     parser.add_argument("--input", type=str, default="Wheel_Data", help="Input dataset folder")
     parser.add_argument("--output", type=str, default="Wheel_Data_Processed", help="Output folder")
     parser.add_argument("--crop-ratio", type=float, default=0.55, help="Center crop ratio (default 0.55)")
     parser.add_argument("--clahe-clip", type=float, default=3.0, help="CLAHE clip limit (default 3.0)")
-    parser.add_argument("--size", type=int, default=224, help="Output image size (default 224)")
+    parser.add_argument("--size", type=int, default=384, help="Output image size (default 384 for EfficientNetV2-S)")
     args = parser.parse_args()
 
     process_dataset(args.input, args.output, args.crop_ratio, args.clahe_clip, args.size)
