@@ -40,6 +40,7 @@ from loguru import logger
 
 _predictor = None
 _current_image_path = None  # Track cached image
+_current_image_size = None  # Cache image dimensions to avoid re-opening
 
 
 def _load_model():
@@ -73,12 +74,13 @@ def _load_model():
 
 def _set_image(image_path: str):
     """Set image for prediction — caches encoding for repeated prompts."""
-    global _current_image_path
+    global _current_image_path, _current_image_size
 
     if _current_image_path == image_path:
         return  # Already encoded
 
     image = PILImage.open(image_path).convert("RGB")
+    _current_image_size = image.size  # (width, height)
     image_np = np.array(image)
 
     if _predictor != "stub":
@@ -109,36 +111,33 @@ def predict_from_boxes(
 
     _set_image(image_path)
 
-    image = PILImage.open(image_path)
-    width, height = image.size
+    # Use cached image size instead of re-opening the file
+    width, height = _current_image_size
 
+    # Convert all boxes to absolute xyxy format
+    input_boxes = np.array([
+        [
+            int((b["x"] - b["w"] / 2) * width),
+            int((b["y"] - b["h"] / 2) * height),
+            int((b["x"] + b["w"] / 2) * width),
+            int((b["y"] + b["h"] / 2) * height),
+        ]
+        for b in boxes
+    ])
+
+    # Predict masks — image encoding is cached, only the lightweight
+    # mask decoder runs per box (~8ms each)
     results = []
-    for box in boxes:
-        # Convert normalized center format to absolute xyxy
-        cx, cy, w, h = box["x"], box["y"], box["w"], box["h"]
-        x1 = int((cx - w / 2) * width)
-        y1 = int((cy - h / 2) * height)
-        x2 = int((cx + w / 2) * width)
-        y2 = int((cy + h / 2) * height)
-
-        input_box = np.array([x1, y1, x2, y2])
-
+    for i, box in enumerate(boxes):
         masks, scores, _ = _predictor.predict(
-            box=input_box,
+            box=input_boxes[i],
             multimask_output=True,
         )
 
-        # Select best mask (highest IoU score)
         best_idx = np.argmax(scores)
-        best_mask = masks[best_idx]
-        best_score = float(scores[best_idx])
-
-        # Encode mask as RLE
-        rle = _mask_to_rle(best_mask)
-
         results.append({
-            "mask_rle": rle,
-            "iou_score": best_score,
+            "mask_rle": _mask_to_rle(masks[best_idx]),
+            "iou_score": float(scores[best_idx]),
             "bbox": box,
         })
 
@@ -168,8 +167,8 @@ def predict_from_points(
 
     _set_image(image_path)
 
-    image = PILImage.open(image_path)
-    width, height = image.size
+    # Use cached image size
+    width, height = _current_image_size
 
     point_coords = np.array([[int(p["x"] * width), int(p["y"] * height)] for p in points])
     point_labels = np.array([p.get("label", 1) for p in points])
@@ -188,22 +187,16 @@ def predict_from_points(
 
 
 def _mask_to_rle(mask: np.ndarray) -> dict:
-    """Convert binary mask to Run-Length Encoding (RLE)."""
+    """Convert binary mask to Run-Length Encoding (RLE) using vectorized numpy."""
     pixels = mask.flatten()
-    runs = []
-    current_val = 0
-    current_len = 0
 
-    for pixel in pixels:
-        if pixel == current_val:
-            current_len += 1
-        else:
-            runs.append(current_len)
-            current_val = pixel
-            current_len = 1
-    runs.append(current_len)
+    # Vectorized RLE: find positions where values change
+    diffs = np.diff(pixels)
+    change_indices = np.where(diffs != 0)[0] + 1
+    run_starts = np.concatenate([[0], change_indices])
+    run_lengths = np.diff(np.concatenate([run_starts, [len(pixels)]]))
 
     return {
-        "counts": runs,
+        "counts": run_lengths.tolist(),
         "size": list(mask.shape),
     }

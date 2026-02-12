@@ -38,11 +38,15 @@ from loguru import logger
 _model = None
 _preprocess = None
 _device = None
+_tokenizer = None  # Cached tokenizer
+
+# In-memory FAISS index cache: {project_id: (index, metadata, mtime)}
+_index_cache: dict[str, tuple] = {}
 
 
 def _load_model():
     """Load CLIP model — called once per Celery worker."""
-    global _model, _preprocess, _device
+    global _model, _preprocess, _device, _tokenizer
 
     if _model is not None:
         return
@@ -62,6 +66,9 @@ def _load_model():
     )
     _model.eval()
 
+    # Cache tokenizer once
+    _tokenizer = open_clip.get_tokenizer("ViT-L-14")
+
     logger.info(f"CLIP loaded on {_device}")
 
 
@@ -78,13 +85,29 @@ def encode_image(image: PILImage.Image) -> np.ndarray:
     return features.cpu().numpy().flatten()
 
 
+def encode_image_batch(images: list[PILImage.Image], batch_size: int = 16) -> np.ndarray:
+    """Encode a batch of PIL images to CLIP embeddings. Much faster than one-by-one."""
+    _load_model()
+
+    all_embeddings = []
+    for i in range(0, len(images), batch_size):
+        batch = images[i:i + batch_size]
+        tensors = torch.stack([_preprocess(img) for img in batch]).to(_device)
+
+        with torch.no_grad():
+            features = _model.encode_image(tensors)
+            features = features / features.norm(dim=-1, keepdim=True)
+
+        all_embeddings.append(features.cpu().numpy())
+
+    return np.vstack(all_embeddings)
+
+
 def encode_text(text: str) -> np.ndarray:
     """Encode text to CLIP embedding (for text-to-image search)."""
     _load_model()
 
-    import open_clip
-    tokenizer = open_clip.get_tokenizer("ViT-L-14")
-    text_tokens = tokenizer([text]).to(_device)
+    text_tokens = _tokenizer([text]).to(_device)
 
     with torch.no_grad():
         features = _model.encode_text(text_tokens)
@@ -114,20 +137,19 @@ def build_faiss_index(
 
     _load_model()
 
-    embeddings = []
-    metadata = []  # Parallel list: metadata[i] corresponds to embeddings[i]
+    all_images = []   # PIL images to encode
+    metadata = []     # Parallel metadata list
 
     for record in image_records:
         try:
             image = PILImage.open(record["filepath"]).convert("RGB")
             w, h = image.size
 
-            # Full image embedding
-            emb = encode_image(image)
-            embeddings.append(emb)
+            # Full image
+            all_images.append(image)
             metadata.append({
                 "image_id": record["id"],
-                "bbox": [0.5, 0.5, 1.0, 1.0],  # full image
+                "bbox": [0.5, 0.5, 1.0, 1.0],
                 "type": "full",
             })
 
@@ -145,8 +167,7 @@ def build_faiss_index(
                     if crop.size[0] < 32 or crop.size[1] < 32:
                         continue
 
-                    emb = encode_image(crop)
-                    embeddings.append(emb)
+                    all_images.append(crop)
                     metadata.append({
                         "image_id": record["id"],
                         "bbox": [
@@ -161,12 +182,15 @@ def build_faiss_index(
         except Exception as e:
             logger.error(f"CLIP indexing failed for {record['filepath']}: {e}")
 
-    if not embeddings:
-        raise ValueError("No embeddings generated")
+    if not all_images:
+        raise ValueError("No images to index")
+
+    # Batch encode all images at once (much faster than one-by-one)
+    logger.info(f"Encoding {len(all_images)} image crops in batches...")
+    vectors = encode_image_batch(all_images, batch_size=32).astype(np.float32)
 
     # Build FAISS index
-    dim = len(embeddings[0])
-    vectors = np.array(embeddings, dtype=np.float32)
+    dim = vectors.shape[1]
 
     # Use inner product (cosine similarity since vectors are L2-normalized)
     index = faiss.IndexFlatIP(dim)
@@ -185,8 +209,41 @@ def build_faiss_index(
     with open(metadata_path, "w") as f:
         json.dump(metadata, f)
 
+    # Update in-memory cache
+    _index_cache[project_id] = (index, metadata, index_path.stat().st_mtime)
+
     logger.info(f"FAISS index built: {len(vectors)} vectors, saved to {index_path}")
     return str(index_path)
+
+
+def _load_index(project_id: str):
+    """Load FAISS index and metadata, using in-memory cache when possible."""
+    import faiss
+    from app.config import settings
+
+    index_dir = Path(settings.faiss_index_dir) / project_id
+    index_path = index_dir / "clip.index"
+    metadata_path = index_dir / "metadata.json"
+
+    if not index_path.exists():
+        raise FileNotFoundError(f"FAISS index not found for project {project_id}. Build it first.")
+
+    current_mtime = index_path.stat().st_mtime
+
+    # Return cached if still fresh
+    if project_id in _index_cache:
+        cached_index, cached_meta, cached_mtime = _index_cache[project_id]
+        if cached_mtime == current_mtime:
+            return cached_index, cached_meta
+
+    # Load from disk and cache
+    index = faiss.read_index(str(index_path))
+    with open(metadata_path) as f:
+        metadata = json.load(f)
+
+    _index_cache[project_id] = (index, metadata, current_mtime)
+    logger.debug(f"FAISS index loaded and cached for project {project_id}")
+    return index, metadata
 
 
 def search_similar(
@@ -209,22 +266,10 @@ def search_similar(
     Returns:
         List of {"image_id": str, "bbox": list, "similarity": float}
     """
-    import faiss
-    from app.config import settings
-
     _load_model()
 
-    # Load index and metadata
-    index_dir = Path(settings.faiss_index_dir) / project_id
-    index_path = index_dir / "clip.index"
-    metadata_path = index_dir / "metadata.json"
-
-    if not index_path.exists():
-        raise FileNotFoundError(f"FAISS index not found for project {project_id}. Build it first.")
-
-    index = faiss.read_index(str(index_path))
-    with open(metadata_path) as f:
-        metadata = json.load(f)
+    # Load cached index
+    index, metadata = _load_index(project_id)
 
     # Crop query region
     image = PILImage.open(query_image_path).convert("RGB")
