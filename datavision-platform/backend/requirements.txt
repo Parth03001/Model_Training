@@ -1,0 +1,68 @@
+# =============================================================================
+# DataVision Platform - Backend Dependencies
+# =============================================================================
+
+# --- Web Framework ---
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+websockets>=12.0
+
+# --- Database ---
+sqlalchemy[asyncio]>=2.0.25
+asyncpg>=0.29.0
+alembic>=1.13.0
+
+# --- Validation & Serialization ---
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# --- Task Queue ---
+celery[redis]>=5.3.6
+redis>=5.0.0
+
+# --- Deep Learning (Core) ---
+torch>=2.1.0
+torchvision>=0.16.0
+transformers>=4.37.0
+
+# --- Object Detection ---
+ultralytics>=8.1.0
+
+# --- Auto-Annotation Models ---
+# Grounding DINO
+groundingdino-py>=0.4.0
+
+# SAM 2 (Segment Anything Model 2)
+# Install from: pip install git+https://github.com/facebookresearch/segment-anything-2.git
+
+# CLIP
+open-clip-torch>=2.24.0
+
+# --- Vector Search ---
+faiss-cpu>=1.7.4
+# For GPU: faiss-gpu>=1.7.4
+
+# --- Image Processing ---
+opencv-python-headless>=4.9.0
+Pillow>=10.2.0
+albumentations>=1.3.1
+
+# --- Data & ML Utilities ---
+numpy>=1.26.0
+pandas>=2.2.0
+scikit-learn>=1.4.0
+scipy>=1.12.0
+
+# --- Monitoring & Logging ---
+loguru>=0.7.2
+
+# --- Export Formats ---
+onnx>=1.15.0
+onnxruntime>=1.17.0
+
+# --- Utilities ---
+python-dotenv>=1.0.0
+httpx>=0.26.0
+aiofiles>=23.2.0
+pycocotools>=2.0.7

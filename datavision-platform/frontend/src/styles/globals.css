@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-surface-950 text-white antialiased;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { @apply bg-surface-900; }
+::-webkit-scrollbar-thumb { @apply bg-surface-700 rounded; }
+::-webkit-scrollbar-thumb:hover { @apply bg-surface-600; }
+
+/* Canvas cursor overrides */
+.cursor-crosshair { cursor: crosshair; }
+.cursor-grab { cursor: grab; }
+.cursor-grabbing { cursor: grabbing; }
