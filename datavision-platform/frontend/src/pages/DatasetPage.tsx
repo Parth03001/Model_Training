@@ -8,6 +8,7 @@ import { Upload, FolderUp, Image as ImageIcon, SplitSquareVertical, Download, Tr
 import { useDropzone } from 'react-dropzone';
 import { useRef } from 'react';
 import { imagesApi } from '../api/images';
+import type { UploadProgress } from '../api/images';
 import { annotationsApi } from '../api/annotations';
 import type { ImageRecord } from '../types';
 import toast from 'react-hot-toast';
@@ -18,6 +19,7 @@ export default function DatasetPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
 
   const loadImages = useCallback(async () => {
     if (!projectId) return;
@@ -38,14 +40,16 @@ export default function DatasetPage() {
   const onDrop = useCallback(async (files: File[]) => {
     if (!projectId || files.length === 0) return;
     setUploading(true);
+    setUploadProgress(null);
     try {
-      const res = await imagesApi.upload(projectId, files);
-      toast.success(`Uploaded ${res.data.uploaded} images${res.data.failed > 0 ? `, ${res.data.failed} failed` : ''}`);
+      const result = await imagesApi.uploadBatch(projectId, files, (p) => setUploadProgress(p));
+      toast.success(`Uploaded ${result.uploaded} images${result.failed > 0 ? `, ${result.failed} failed` : ''}`);
       loadImages();
     } catch (e: any) {
       toast.error('Upload failed');
     } finally {
       setUploading(false);
+      setUploadProgress(null);
     }
   }, [projectId, loadImages]);
 
@@ -167,24 +171,45 @@ export default function DatasetPage() {
           {...({ webkitdirectory: '', directory: '', mozdirectory: '' } as any)}
         />
         <Upload size={32} className="mx-auto mb-3 text-surface-400" />
-        {uploading ? (
-          <p className="text-surface-400">Uploading...</p>
+        {uploading && uploadProgress ? (
+          <div className="w-full max-w-md mx-auto">
+            <p className="text-surface-300 mb-2">
+              Uploading batch {uploadProgress.chunk} / {uploadProgress.totalChunks}
+            </p>
+            <div className="h-3 w-full rounded-full bg-surface-800 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary-500 transition-all duration-300"
+                style={{ width: `${Math.round((uploadProgress.sent / uploadProgress.total) * 100)}%` }}
+              />
+            </div>
+            <p className="mt-2 text-xs text-surface-400">
+              {uploadProgress.uploaded} uploaded
+              {uploadProgress.failed > 0 && <span className="text-red-400"> / {uploadProgress.failed} failed</span>}
+              {' '} of {uploadProgress.total} total
+            </p>
+          </div>
+        ) : uploading ? (
+          <p className="text-surface-400">Preparing upload...</p>
         ) : isDragActive ? (
           <p className="text-primary-400">Drop images here</p>
         ) : (
           <p className="text-surface-400">Drag & drop images, or click to browse</p>
         )}
-        <p className="mt-1 text-xs text-surface-500">JPG, PNG, BMP, TIFF, WebP supported</p>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            folderInputRef.current?.click();
-          }}
-          className="mt-3 inline-flex items-center gap-2 rounded-lg bg-surface-800 px-4 py-2 text-sm text-surface-300 hover:bg-surface-700 transition-colors"
-        >
-          <FolderUp size={16} /> Upload Folder
-        </button>
+        {!uploading && (
+          <>
+            <p className="mt-1 text-xs text-surface-500">JPG, PNG, BMP, TIFF, WebP supported - handles 10,000+ images</p>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                folderInputRef.current?.click();
+              }}
+              className="mt-3 inline-flex items-center gap-2 rounded-lg bg-surface-800 px-4 py-2 text-sm text-surface-300 hover:bg-surface-700 transition-colors"
+            >
+              <FolderUp size={16} /> Upload Folder
+            </button>
+          </>
+        )}
       </div>
 
       {/* Image grid */}
