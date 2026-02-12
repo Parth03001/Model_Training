@@ -23,9 +23,11 @@ const tools: { id: AnnotationTool; icon: typeof Square; label: string; shortcut:
 
 interface ToolBarProps {
   onAutoAnnotate: () => void;
+  onSmartSelect?: () => void;
+  onFindSimilar?: () => void;
 }
 
-export default function ToolBar({ onAutoAnnotate }: ToolBarProps) {
+export default function ToolBar({ onAutoAnnotate, onSmartSelect, onFindSimilar }: ToolBarProps) {
   const {
     activeTool, setActiveTool,
     currentImageIndex, images,
@@ -67,15 +69,17 @@ export default function ToolBar({ onAutoAnnotate }: ToolBarProps) {
           <span className="hidden md:inline">Auto-Annotate</span>
         </button>
         <button
+          onClick={onSmartSelect}
           className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-violet-400 hover:bg-surface-700 transition-colors"
-          title="Smart Select (SAM 2)"
+          title="Smart Select (SAM 2) — draw a box then click to generate mask"
         >
           <Sparkles size={16} />
           <span className="hidden md:inline">Smart Select</span>
         </button>
         <button
+          onClick={onFindSimilar}
           className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-cyan-400 hover:bg-surface-700 transition-colors"
-          title="Find Similar (CLIP)"
+          title="Find Similar (CLIP) — draw a box to search for similar objects"
         >
           <Search size={16} />
           <span className="hidden md:inline">Find Similar</span>

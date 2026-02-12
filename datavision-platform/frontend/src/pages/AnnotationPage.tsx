@@ -18,6 +18,7 @@ export default function AnnotationPage() {
   const { currentProject, setCurrentProject, fetchProjects, projects } = useProjectStore();
   const { loadImages, setClasses } = useAnnotationStore();
   const [showAutoAnnotate, setShowAutoAnnotate] = useState(false);
+  const [autoAnnotateTab, setAutoAnnotateTab] = useState<'auto_annotate' | 'smart_select' | 'find_similar'>('auto_annotate');
 
   // Canvas container ref for responsive sizing
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -91,7 +92,11 @@ export default function AnnotationPage() {
   return (
     <div className="flex h-full flex-col -m-4">
       {/* Toolbar */}
-      <ToolBar onAutoAnnotate={() => setShowAutoAnnotate(!showAutoAnnotate)} />
+      <ToolBar
+        onAutoAnnotate={() => { setAutoAnnotateTab('auto_annotate'); setShowAutoAnnotate(!showAutoAnnotate); }}
+        onSmartSelect={() => { setAutoAnnotateTab('smart_select'); setShowAutoAnnotate(true); }}
+        onFindSimilar={() => { setAutoAnnotateTab('find_similar'); setShowAutoAnnotate(true); }}
+      />
 
       <div className="flex flex-1 overflow-hidden relative">
         {/* Left sidebar: Classes + Images */}
@@ -111,7 +116,7 @@ export default function AnnotationPage() {
         </div>
 
         {/* Auto-annotate panel (overlay) */}
-        <AutoAnnotatePanel visible={showAutoAnnotate} onClose={() => setShowAutoAnnotate(false)} />
+        <AutoAnnotatePanel visible={showAutoAnnotate} onClose={() => setShowAutoAnnotate(false)} initialTab={autoAnnotateTab} />
       </div>
     </div>
   );
