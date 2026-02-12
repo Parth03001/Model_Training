@@ -1,0 +1,123 @@
+Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+Install the latest PowerShell for new features and improvements! https://aka.ms/PSWindows
+
+Loading personal and system profiles took 3539ms.
+=========================================
+  DataVision Platform - Frontend Setup
+=========================================
+
+[0/2] Node.js not found. Installing via Conda...
+3 channel Terms of Service accepted
+Channels:
+ - conda-forge
+ - defaults
+Platform: win-64
+Collecting package metadata (repodata.json): done
+Solving environment: done
+
+
+==> WARNING: A newer version of conda exists. <==
+    current version: 25.11.1
+    latest version: 26.1.0
+
+Please update conda by running
+
+    $ conda update -n base -c defaults conda
+
+
+
+## Package Plan ##
+
+  environment location: C:\Users\50014665\AppData\Local\miniconda3
+
+  added / updated specs:
+    - nodejs=20
+
+
+The following packages will be downloaded:
+
+    package                    |            build
+    ---------------------------|-----------------
+    ca-certificates-2026.1.4   |       h4c7d964_0         144 KB  conda-forge
+    certifi-2026.1.4           |     pyhd8ed1ab_0         147 KB  conda-forge
+    conda-26.1.0               |  py313hfa70ccb_0         1.2 MB  conda-forge
+    nodejs-20.19.6             |       h80290e7_2        21.9 MB  conda-forge
+    openssl-3.6.1              |       hf411b9b_1         8.9 MB  conda-forge
+    ------------------------------------------------------------
+                                           Total:        32.3 MB
+
+The following NEW packages will be INSTALLED:
+
+  nodejs             conda-forge/win-64::nodejs-20.19.6-h80290e7_2
+
+The following packages will be UPDATED:
+
+  ca-certificates    pkgs/main/win-64::ca-certificates-202~ --> conda-forge/noarch::ca-certificates-2026.1.4-h4c7d964_0
+  certifi            pkgs/main/win-64::certifi-2025.11.12-~ --> conda-forge/noarch::certifi-2026.1.4-pyhd8ed1ab_0
+  conda              pkgs/main::conda-25.11.1-py313haa9553~ --> conda-forge::conda-26.1.0-py313hfa70ccb_0
+  openssl              pkgs/main::openssl-3.0.18-h543e019_0 --> conda-forge::openssl-3.6.1-hf411b9b_1
+
+
+
+Downloading and Extracting Packages:
+
+Preparing transaction: done
+Verifying transaction: done
+Executing transaction: done
+Using Node.js v20.19.6, npm 10.8.2
+
+[1/2] Installing Node.js dependencies...
+
+added 210 packages, and audited 211 packages in 28s
+
+32 packages are looking for funding
+  run `npm fund` for details
+
+2 moderate severity vulnerabilities
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+npm notice
+npm notice New major version of npm available! 10.8.2 -> 11.10.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.10.0
+npm notice To update run: npm install -g npm@11.10.0
+npm notice
+[2/2] Starting Vite dev server...
+
+  App: http://localhost:5173
+
+
+> datavision-platform@0.1.0 dev
+> vite
+
+
+  VITE v5.4.21  ready in 638 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://10.3.58.79:5173/
+  ➜  press h + enter to show help
+4:39:55 pm [vite] Internal server error: [postcss] D:/Model_Training/datavision-platform/frontend/src/styles/globals.css:14:35: The `bg-surface-600` class does not exist. If `bg-surface-600` is a custom class, make sure it is defined within a `@layer` directive.
+  Plugin: vite:css
+  File: D:/Model_Training/datavision-platform/frontend/src/styles/globals.css:14:34
+  12 |  ::-webkit-scrollbar-track { @apply bg-surface-900; }
+  13 |  ::-webkit-scrollbar-thumb { @apply bg-surface-700 rounded; }
+  14 |  ::-webkit-scrollbar-thumb:hover { @apply bg-surface-600; }
+     |                                    ^
+  15 |
+  16 |  /* Canvas cursor overrides */
+      at Input.error (D:\Model_Training\datavision-platform\frontend\node_modules\postcss\lib\input.js:135:16)
+      at AtRule.error (D:\Model_Training\datavision-platform\frontend\node_modules\postcss\lib\node.js:146:32)
+      at processApply (D:\Model_Training\datavision-platform\frontend\node_modules\tailwindcss\lib\lib\expandApplyAtRules.js:380:29)
+      at D:\Model_Training\datavision-platform\frontend\node_modules\tailwindcss\lib\lib\expandApplyAtRules.js:551:9
+      at D:\Model_Training\datavision-platform\frontend\node_modules\tailwindcss\lib\processTailwindFeatures.js:55:50
+      at async plugins (D:\Model_Training\datavision-platform\frontend\node_modules\tailwindcss\lib\plugin.js:38:17)
+      at async LazyResult.runAsync (D:\Model_Training\datavision-platform\frontend\node_modules\postcss\lib\lazy-result.js:293:11)
+      at async compileCSS (file:///D:/Model_Training/datavision-platform/frontend/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:36898:21)
+      at async TransformPluginContext.transform (file:///D:/Model_Training/datavision-platform/frontend/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:36171:11)
+      at async PluginContainer.transform (file:///D:/Model_Training/datavision-platform/frontend/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18)
+      at async loadAndTransform (file:///D:/Model_Training/datavision-platform/frontend/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27)
+4:39:55 pm [vite] Pre-transform error: [postcss] D:/Model_Training/datavision-platform/frontend/src/styles/globals.css:14:35: The `bg-surface-600` class does not exist. If `bg-surface-600` is a custom class, make sure it is defined within a `@layer` directive.
