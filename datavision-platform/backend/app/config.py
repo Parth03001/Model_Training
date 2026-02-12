@@ -1,23 +1,33 @@
-"""Application configuration loaded from environment variables."""
+"""Application configuration loaded from environment variables.
+
+Local dev:  DATABASE_URL not set → uses SQLite at ./data/datavision.db
+Docker:     DATABASE_URL=postgresql+asyncpg://... → uses PostgreSQL
+"""
 
 from pathlib import Path
 from pydantic_settings import BaseSettings
 
+# Base directory: datavision-platform/backend/
+BASE_DIR = Path(__file__).resolve().parent.parent
+
 
 class Settings(BaseSettings):
     # --- Database ---
-    database_url: str = "postgresql+asyncpg://datavision:changeme@db:5432/datavision"
+    # Default: SQLite for local dev (no PostgreSQL needed)
+    # Override with DATABASE_URL=postgresql+asyncpg://... for production
+    database_url: str = f"sqlite+aiosqlite:///{BASE_DIR / 'data' / 'datavision.db'}"
 
-    # --- Redis ---
-    redis_url: str = "redis://redis:6379/0"
-    celery_broker_url: str = "redis://redis:6379/1"
-    celery_result_backend: str = "redis://redis:6379/2"
+    # --- Redis (optional for local dev) ---
+    redis_url: str = "redis://localhost:6379/0"
+    celery_broker_url: str = "redis://localhost:6379/1"
+    celery_result_backend: str = "redis://localhost:6379/2"
+    use_celery: bool = False  # Set True if Redis is running locally
 
-    # --- Storage ---
-    upload_dir: Path = Path("/data/uploads")
-    model_dir: Path = Path("/data/models")
-    export_dir: Path = Path("/data/exports")
-    faiss_index_dir: Path = Path("/data/faiss_indices")
+    # --- Storage (local paths relative to backend/) ---
+    upload_dir: Path = BASE_DIR / "data" / "uploads"
+    model_dir: Path = BASE_DIR / "data" / "models"
+    export_dir: Path = BASE_DIR / "data" / "exports"
+    faiss_index_dir: Path = BASE_DIR / "data" / "faiss_indices"
 
     # --- Grounding DINO ---
     grounding_dino_model: str = "IDEA-Research/grounding-dino-base"
@@ -47,6 +57,10 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",")]
+
+    @property
+    def is_sqlite(self) -> bool:
+        return "sqlite" in self.database_url
 
 
 settings = Settings()

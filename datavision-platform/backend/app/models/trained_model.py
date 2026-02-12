@@ -4,19 +4,19 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import String, Float, Integer, Text, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+from app.models.base import UUIDType
 
 
 class TrainedModel(Base):
     __tablename__ = "trained_models"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(UUIDType, primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUIDType, ForeignKey("projects.id"), nullable=False)
     training_job_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("training_jobs.id"), nullable=True
+        UUIDType, ForeignKey("training_jobs.id"), nullable=True
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     architecture: Mapped[str] = mapped_column(String(100), nullable=False)
