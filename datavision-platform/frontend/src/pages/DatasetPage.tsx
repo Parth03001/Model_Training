@@ -4,8 +4,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { Upload, Image as ImageIcon, SplitSquareVertical, Download, Trash2 } from 'lucide-react';
+import { Upload, FolderUp, Image as ImageIcon, SplitSquareVertical, Download, Trash2 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
+import { useRef } from 'react';
 import { imagesApi } from '../api/images';
 import { annotationsApi } from '../api/annotations';
 import type { ImageRecord } from '../types';
@@ -53,6 +54,25 @@ export default function DatasetPage() {
     accept: { 'image/*': ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp'] },
     multiple: true,
   });
+
+  const folderInputRef = useRef<HTMLInputElement>(null);
+
+  const onFolderSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0 || !projectId) return;
+    const imageExts = new Set(['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp']);
+    const imageFiles = Array.from(fileList).filter((f) => {
+      const ext = f.name.slice(f.name.lastIndexOf('.')).toLowerCase();
+      return imageExts.has(ext);
+    });
+    if (imageFiles.length === 0) {
+      toast.error('No supported image files found in folder');
+      return;
+    }
+    await onDrop(imageFiles);
+    // Reset so the same folder can be re-selected
+    e.target.value = '';
+  }, [projectId, onDrop]);
 
   const handleAutoSplit = async () => {
     // Random 80/15/5 split
@@ -138,6 +158,14 @@ export default function DatasetPage() {
         }`}
       >
         <input {...getInputProps()} />
+        {/* Hidden folder input */}
+        <input
+          ref={folderInputRef}
+          type="file"
+          className="hidden"
+          onChange={onFolderSelect}
+          {...({ webkitdirectory: '', directory: '', mozdirectory: '' } as any)}
+        />
         <Upload size={32} className="mx-auto mb-3 text-surface-400" />
         {uploading ? (
           <p className="text-surface-400">Uploading...</p>
@@ -147,6 +175,16 @@ export default function DatasetPage() {
           <p className="text-surface-400">Drag & drop images, or click to browse</p>
         )}
         <p className="mt-1 text-xs text-surface-500">JPG, PNG, BMP, TIFF, WebP supported</p>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            folderInputRef.current?.click();
+          }}
+          className="mt-3 inline-flex items-center gap-2 rounded-lg bg-surface-800 px-4 py-2 text-sm text-surface-300 hover:bg-surface-700 transition-colors"
+        >
+          <FolderUp size={16} /> Upload Folder
+        </button>
       </div>
 
       {/* Image grid */}
