@@ -132,13 +132,41 @@ async def training_metrics_ws(websocket: WebSocket, job_id: str):
     """
     WebSocket endpoint for real-time training metrics.
     Frontend connects here to receive live epoch updates.
+    Requires Redis; falls back to polling DB when Redis is unavailable.
     """
     await websocket.accept()
     import asyncio
-    import redis.asyncio as aioredis
-    from app.config import settings
 
-    r = aioredis.from_url(settings.redis_url)
+    try:
+        import redis.asyncio as aioredis
+    except ImportError:
+        # No redis — fall back to periodic DB polling
+        from app.api.deps import async_session_factory
+        try:
+            while True:
+                async with async_session_factory() as db:
+                    result = await db.execute(
+                        select(TrainingJob).where(TrainingJob.id == job_id)
+                    )
+                    job = result.scalar_one_or_none()
+                    if job:
+                        import json as _json
+                        payload = {
+                            "status": job.status,
+                            "current_epoch": job.current_epoch,
+                            "metrics": _json.loads(job.metrics) if job.metrics else None,
+                        }
+                        await websocket.send_json(payload)
+                        if job.status in ("completed", "failed", "cancelled"):
+                            break
+                await asyncio.sleep(2)
+        except WebSocketDisconnect:
+            pass
+        return
+
+    from app.config import settings as _settings
+
+    r = aioredis.from_url(_settings.redis_url)
     channel = f"training:{job_id}:metrics"
 
     pubsub = r.pubsub()
