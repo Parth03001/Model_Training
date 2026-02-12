@@ -1,5 +1,5 @@
 # =============================================================================
-# DataVision Platform — Start Frontend (Windows PowerShell + Conda)
+# DataVision Platform - Start Frontend (Windows PowerShell + Conda)
 # =============================================================================
 # Usage: .\scripts\start_frontend.ps1
 
@@ -10,7 +10,7 @@ $ProjectRoot = Split-Path -Parent $ScriptDir
 $FrontendDir = Join-Path $ProjectRoot "frontend"
 
 Write-Host "=========================================" -ForegroundColor Cyan
-Write-Host "  DataVision Platform — Frontend Setup"   -ForegroundColor Cyan
+Write-Host "  DataVision Platform - Frontend Setup"    -ForegroundColor Cyan
 Write-Host "=========================================" -ForegroundColor Cyan
 Write-Host ""
 

@@ -1,5 +1,5 @@
 # =============================================================================
-# DataVision Platform — Run Locally (Windows PowerShell)
+# DataVision Platform - Run Locally (Windows PowerShell)
 # =============================================================================
 #
 # Starts both backend and frontend in parallel as background jobs.
@@ -23,7 +23,7 @@ $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "  DataVision Platform — Local Development"   -ForegroundColor Cyan
+Write-Host "  DataVision Platform - Local Development"    -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Backend  (FastAPI) -> http://localhost:8000"  -ForegroundColor White
