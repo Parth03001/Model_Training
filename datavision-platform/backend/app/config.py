@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     api_port: int = 8000
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
 
+    # --- Logging ---
+    log_level: str = "DEBUG"  # DEBUG | INFO | WARNING | ERROR
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
     @property
