@@ -18,8 +18,8 @@ if __name__ == '__main__':
     model_size = 'm'  # RECOMMENDED for 6388 images
 
     # Training output directory
-    project_dir = './wheel_training'
-    run_name = 'yolo11m_4class_aggressive_aug'
+    project_dir = './wheel_training_optimized'
+    run_name = 'yolo11m_4class'
     checkpoint_path = Path(project_dir) / run_name / 'weights' / 'last.pt'
 
     print(f"\n{'='*60}")
@@ -72,7 +72,8 @@ if __name__ == '__main__':
         lr0=0.0005,     # Initial learning rate (REDUCED from 0.001 - prevents overfitting)
         lrf=0.01,       # Final learning rate (lr0 * lrf)
         momentum=0.937,
-        weight_decay=0.0005,
+        weight_decay=0.001,
+        dropout=0.1,
         
         # ============================================
         # AGGRESSIVE AUGMENTATION (Perfect for your dataset)
@@ -98,7 +99,7 @@ if __name__ == '__main__':
         copy_paste=0.0,    # DISABLED - was causing overfitting
         
         # Regularization
-        label_smoothing=0.1,
+        label_smoothing=0.15,
         # erasing=0.4,     # REMOVED - was too aggressive and caused overfitting
         
         # Loss weights

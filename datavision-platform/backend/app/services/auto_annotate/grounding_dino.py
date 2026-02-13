@@ -44,10 +44,17 @@ def _load_model():
     from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
     from app.config import settings
 
-    logger.info(f"Loading Grounding DINO: {settings.grounding_dino_model}")
+    # Check for local folder first (offline mode)
+    local_model_path = Path("grounding-dino-base")
+    model_id = str(local_model_path) if local_model_path.exists() else settings.grounding_dino_model
 
-    _processor = AutoProcessor.from_pretrained(settings.grounding_dino_model)
-    _model = AutoModelForZeroShotObjectDetection.from_pretrained(settings.grounding_dino_model)
+    if local_model_path.exists():
+        logger.info(f"Loading Grounding DINO from local folder: {local_model_path}")
+    else:
+        logger.info(f"Loading Grounding DINO: {model_id}")
+
+    _processor = AutoProcessor.from_pretrained(model_id)
+    _model = AutoModelForZeroShotObjectDetection.from_pretrained(model_id)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     _model = _model.to(device)

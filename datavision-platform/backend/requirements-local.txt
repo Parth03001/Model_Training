@@ -66,5 +66,6 @@ pycocotools>=2.0.7
 # =============================================================================
 # Optional: Uncomment these if you have Redis running locally
 # =============================================================================
-# celery[redis]>=5.3.6
-# redis>=5.0.0
+celery[redis]>=5.3.6
+redis>=5.0.0
+celery
