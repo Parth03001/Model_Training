@@ -1,6 +1,13 @@
 import { api } from './client';
 import type { ImageRecord } from '../types';
 
+export interface TaskStatusResponse {
+  task_id: string;
+  status: 'PENDING' | 'STARTED' | 'SUCCESS' | 'FAILURE' | string;
+  result?: unknown;
+  error?: string;
+}
+
 const CHUNK_SIZE = 50; // files per request
 const MAX_RETRIES = 3;
 
@@ -113,4 +120,12 @@ export const imagesApi = {
   get: (id: string) => api.get<ImageRecord>(`/images/${id}`),
   delete: (id: string) => api.delete(`/images/${id}`),
   setSplit: (id: string, split: string) => api.patch(`/images/${id}/split`, null, { params: { split } }),
+
+  /** Trigger background CLIP/FAISS index build for a project. Returns a task_id to poll. */
+  buildSearchIndex: (projectId: string) =>
+    api.post<{ task_id: string; status: string }>(`/auto-annotate/build-index/${projectId}`),
+
+  /** Poll the status of any async task (indexing, annotation, etc.). */
+  getTaskStatus: (taskId: string) =>
+    api.get<TaskStatusResponse>(`/auto-annotate/task/${taskId}`),
 };

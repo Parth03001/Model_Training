@@ -2,11 +2,10 @@
  * DatasetPage — Image upload, dataset browser, and split management.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { Upload, FolderUp, Image as ImageIcon, SplitSquareVertical, Download, Trash2 } from 'lucide-react';
+import { Upload, FolderUp, SplitSquareVertical, Download, Loader2 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
-import { useRef } from 'react';
 import { imagesApi } from '../api/images';
 import type { UploadProgress } from '../api/images';
 import { annotationsApi } from '../api/annotations';
@@ -20,6 +19,9 @@ export default function DatasetPage() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
+  const [indexingTaskId, setIndexingTaskId] = useState<string | null>(null);
+  const [indexingDone, setIndexingDone] = useState(false);
+  const indexPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadImages = useCallback(async () => {
     if (!projectId) return;
@@ -37,15 +39,48 @@ export default function DatasetPage() {
     loadImages();
   }, [loadImages]);
 
+  // Poll indexing task until it finishes
+  useEffect(() => {
+    if (!indexingTaskId) return;
+    setIndexingDone(false);
+
+    indexPollRef.current = setInterval(async () => {
+      try {
+        const res = await imagesApi.getTaskStatus(indexingTaskId);
+        const { status } = res.data;
+        if (status === 'SUCCESS') {
+          clearInterval(indexPollRef.current!);
+          setIndexingTaskId(null);
+          setIndexingDone(true);
+          toast.success('Images indexed — visual search is ready');
+        } else if (status === 'FAILURE') {
+          clearInterval(indexPollRef.current!);
+          setIndexingTaskId(null);
+        }
+      } catch {
+        // ignore transient poll errors
+      }
+    }, 3000);
+
+    return () => clearInterval(indexPollRef.current!);
+  }, [indexingTaskId]);
+
   const onDrop = useCallback(async (files: File[]) => {
     if (!projectId || files.length === 0) return;
     setUploading(true);
     setUploadProgress(null);
+    setIndexingDone(false);
     try {
       const result = await imagesApi.uploadBatch(projectId, files, (p) => setUploadProgress(p));
       toast.success(`Uploaded ${result.uploaded} images${result.failed > 0 ? `, ${result.failed} failed` : ''}`);
       loadImages();
-    } catch (e: any) {
+
+      // Kick off background CLIP index build so visual search is ready immediately
+      if (result.uploaded > 0) {
+        const indexRes = await imagesApi.buildSearchIndex(projectId);
+        setIndexingTaskId(indexRes.data.task_id);
+      }
+    } catch {
       toast.error('Upload failed');
     } finally {
       setUploading(false);
@@ -211,6 +246,19 @@ export default function DatasetPage() {
           </>
         )}
       </div>
+
+      {/* Background indexing banner */}
+      {indexingTaskId && (
+        <div className="flex items-center gap-3 rounded-xl border border-primary-800/50 bg-primary-950/40 px-4 py-3 text-sm text-primary-300">
+          <Loader2 size={16} className="animate-spin shrink-0" />
+          <span>Indexing images for visual search — you can browse freely while this runs in the background.</span>
+        </div>
+      )}
+      {indexingDone && (
+        <div className="rounded-xl border border-green-800/50 bg-green-950/40 px-4 py-3 text-sm text-green-300">
+          Visual search index is ready. You can now use CLIP similarity search across this dataset.
+        </div>
+      )}
 
       {/* Image grid */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
