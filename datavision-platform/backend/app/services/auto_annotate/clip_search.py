@@ -51,6 +51,7 @@ def _load_model():
     if _model is not None:
         return
 
+    logger.info("Loading CLIP/SigLIP model (first call — may take 1-3 min on CPU)...")
     import open_clip
     from app.config import settings
 
@@ -151,7 +152,9 @@ def build_faiss_index(
     all_images = []   # PIL images to encode
     metadata = []     # Parallel metadata list
 
-    for record in image_records:
+    total = len(image_records)
+    for i, record in enumerate(image_records):
+        logger.info(f"[CLIP index] Loading image {i + 1}/{total}: {record['filepath']}")
         try:
             image = PILImage.open(record["filepath"]).convert("RGB")
             w, h = image.size
