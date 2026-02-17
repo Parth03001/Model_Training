@@ -51,20 +51,21 @@ def _load_model():
         return
 
     try:
-        from sam2.build_sam import build_sam2
         from sam2.sam2_image_predictor import SAM2ImagePredictor
         from app.config import settings
 
-        logger.info(f"Loading SAM 2: {settings.sam2_model}")
-
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        sam2_model = build_sam2(
-            config_file="sam2_hiera_l.yaml",
-            ckpt_path=settings.sam2_checkpoint,
-            device=device,
-        )
-        _predictor = SAM2ImagePredictor(sam2_model)
+        # Use local model folder if available, otherwise download from HuggingFace
+        local_model_path = settings.model_base_dir / "sam2-hiera-large"
+        model_id = str(local_model_path) if local_model_path.exists() else settings.sam2_model
+
+        if local_model_path.exists():
+            logger.info(f"Loading SAM 2 from local folder: {local_model_path}")
+        else:
+            logger.info(f"Local SAM2 not found at {local_model_path}, loading from HuggingFace: {model_id}")
+
+        _predictor = SAM2ImagePredictor.from_pretrained(model_id, device=device)
         logger.info(f"SAM 2 loaded on {device}")
 
     except ImportError:

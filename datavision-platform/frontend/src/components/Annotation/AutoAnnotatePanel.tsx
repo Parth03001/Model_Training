@@ -3,12 +3,19 @@
  */
 
 import { useState } from 'react';
-import { Wand2, Sparkles, Search, Loader2 } from 'lucide-react';
+import { Wand2, Sparkles, Search, Loader2, ExternalLink } from 'lucide-react';
 import { useAnnotationStore } from '../../store/useAnnotationStore';
 import { annotationsApi } from '../../api/annotations';
 import toast from 'react-hot-toast';
 
 type PanelTab = 'auto_annotate' | 'smart_select' | 'find_similar';
+
+interface ClipSearchResult {
+  image_id: string;
+  bbox: [number, number, number, number]; // [cx, cy, w, h]
+  similarity: number;
+  type: 'full' | 'grid';
+}
 
 interface AutoAnnotatePanelProps {
   visible: boolean;
@@ -17,7 +24,7 @@ interface AutoAnnotatePanelProps {
 }
 
 export default function AutoAnnotatePanel({ visible, onClose, initialTab = 'auto_annotate' }: AutoAnnotatePanelProps) {
-  const { images, currentImage, annotations, loadAnnotations } = useAnnotationStore();
+  const { images, currentImage, annotations, loadAnnotations, setCurrentImageIndex } = useAnnotationStore();
 
   const [activeTab, setActiveTab] = useState<PanelTab>(initialTab);
 
@@ -31,6 +38,7 @@ export default function AutoAnnotatePanel({ visible, onClose, initialTab = 'auto
   // CLIP search state
   const [clipTopK, setClipTopK] = useState(20);
   const [clipThreshold, setClipThreshold] = useState(0.75);
+  const [clipResults, setClipResults] = useState<ClipSearchResult[]>([]);
 
   // Shared
   const [loading, setLoading] = useState(false);
@@ -148,6 +156,7 @@ export default function AutoAnnotatePanel({ visible, onClose, initialTab = 'auto
       return;
     }
 
+    setClipResults([]);
     setLoading(true);
     try {
       const res = await annotationsApi.clipSearch({
@@ -158,8 +167,8 @@ export default function AutoAnnotatePanel({ visible, onClose, initialTab = 'auto
       });
 
       setTaskId(res.data.task_id);
-      toast.success(res.data.message);
-      pollTask(res.data.task_id);
+      toast.success(res.data.message + ' (building index if first time — may take a moment)');
+      pollClipTask(res.data.task_id);
     } catch (e: any) {
       toast.error(e.response?.data?.detail || 'CLIP search failed');
     } finally {
@@ -182,7 +191,8 @@ export default function AutoAnnotatePanel({ visible, onClose, initialTab = 'auto
     }
   };
 
-  const pollTask = async (id: string) => {
+  // Generic poller — reloads annotations on success
+  const pollTask = (id: string) => {
     const interval = setInterval(async () => {
       try {
         const res = await annotationsApi.getTaskStatus(id);
@@ -190,13 +200,41 @@ export default function AutoAnnotatePanel({ visible, onClose, initialTab = 'auto
           clearInterval(interval);
           setTaskId(null);
           toast.success('Task complete!');
-          if (currentImage) {
-            loadAnnotations(currentImage.id);
+          if (currentImage) loadAnnotations(currentImage.id);
+        } else if (res.data.status === 'FAILURE') {
+          clearInterval(interval);
+          setTaskId(null);
+          const errMsg = res.data.error || 'Task failed';
+          toast.error(errMsg);
+          console.error('Task error:', errMsg);
+        }
+      } catch {
+        clearInterval(interval);
+      }
+    }, 2000);
+  };
+
+  // CLIP-specific poller — captures and displays search results
+  const pollClipTask = (id: string) => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await annotationsApi.getTaskStatus(id);
+        if (res.data.status === 'SUCCESS') {
+          clearInterval(interval);
+          setTaskId(null);
+          const result = res.data.result as { results: ClipSearchResult[]; total: number } | undefined;
+          if (result?.results?.length) {
+            setClipResults(result.results);
+            toast.success(`Found ${result.total} similar regions`);
+          } else {
+            toast.success('Search complete — no matches above threshold');
           }
         } else if (res.data.status === 'FAILURE') {
           clearInterval(interval);
           setTaskId(null);
-          toast.error('Task failed');
+          const errMsg = res.data.error || 'CLIP search failed';
+          toast.error(errMsg);
+          console.error('CLIP task error:', errMsg);
         }
       } catch {
         clearInterval(interval);
@@ -329,9 +367,9 @@ export default function AutoAnnotatePanel({ visible, onClose, initialTab = 'auto
             <div className="rounded-lg bg-surface-800/50 p-3 space-y-2">
               <h4 className="text-xs font-semibold text-cyan-400">How to use Find Similar</h4>
               <ol className="space-y-1 text-xs text-surface-400 list-decimal list-inside">
-                <li>Draw a <strong className="text-white">bounding box</strong> around an object of interest</li>
-                <li>Adjust search parameters below</li>
-                <li>Click <strong className="text-white">Search Similar</strong> to find matching objects across your dataset</li>
+                <li>Draw a <strong className="text-white">bounding box</strong> around an object</li>
+                <li>Click <strong className="text-white">Search Similar</strong></li>
+                <li>Index is built automatically on first run</li>
               </ol>
             </div>
 
@@ -356,17 +394,56 @@ export default function AutoAnnotatePanel({ visible, onClose, initialTab = 'auto
             </div>
 
             <div className="space-y-2">
-              <button onClick={handleClipSearch} disabled={loading}
+              <button onClick={handleClipSearch} disabled={loading || !!taskId}
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-600 px-4 py-2.5 text-sm font-medium hover:bg-cyan-500 disabled:opacity-50 transition-colors">
-                {loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-                Search Similar (CLIP)
+                {(loading || taskId) ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                {taskId ? 'Searching...' : 'Search Similar (CLIP)'}
               </button>
-              <button onClick={handleBuildIndex} disabled={loading}
+              <button onClick={handleBuildIndex} disabled={!!taskId}
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-surface-700 px-4 py-2 text-xs text-surface-300 hover:bg-surface-600 disabled:opacity-50 transition-colors">
-                {loading ? <Loader2 size={14} className="animate-spin" /> : null}
-                Build FAISS Index (required first time)
+                {taskId ? <Loader2 size={14} className="animate-spin" /> : null}
+                Rebuild FAISS Index
               </button>
             </div>
+
+            {/* Results list */}
+            {clipResults.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-surface-300">
+                  {clipResults.length} similar regions found
+                </p>
+                <div className="max-h-64 overflow-y-auto space-y-1">
+                  {clipResults.map((r, i) => {
+                    const matchedImage = images.find((img) => img.id === r.image_id);
+                    const matchedIndex = matchedImage ? images.indexOf(matchedImage) : -1;
+                    return (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between rounded bg-surface-800 px-3 py-2 text-xs"
+                      >
+                        <div className="flex flex-col min-w-0">
+                          <span className="truncate text-white font-medium">
+                            {matchedImage?.filename ?? r.image_id.slice(0, 8) + '…'}
+                          </span>
+                          <span className="text-surface-400">
+                            {(r.similarity * 100).toFixed(1)}% match · {r.type}
+                          </span>
+                        </div>
+                        {matchedIndex >= 0 && (
+                          <button
+                            onClick={() => setCurrentImageIndex(matchedIndex)}
+                            title="Go to image"
+                            className="ml-2 shrink-0 text-cyan-400 hover:text-cyan-300"
+                          >
+                            <ExternalLink size={14} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </>
         )}
 

@@ -54,23 +54,21 @@ def _load_model():
     import open_clip
     from app.config import settings
 
-    logger.info(f"Loading CLIP model: {settings.clip_model}")
-
     _device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Using open_clip for flexibility
     # High-VRAM Config: Using SigLIP SO400M (384px) - SOTA for Retrieval
-    local_siglip_folder = Path("siglip-so400m-patch14-384")
-    
+    local_siglip_folder = settings.model_base_dir / "siglip-so400m-patch14-384"
+
     if local_siglip_folder.exists():
-        logger.info(f"Loading SOTA SigLIP model from local folder: {local_siglip_folder}")
-        # SigLIP requires loading via the 'hf-hub:' prefix pointing to the local folder
+        logger.info(f"Loading SigLIP model from local folder: {local_siglip_folder}")
+        # SigLIP loads via 'hf-hub:' prefix pointing to the local folder
         _model, _, _preprocess = open_clip.create_model_and_transforms(
             "hf-hub:" + str(local_siglip_folder.resolve()),
             device=_device,
         )
     else:
-        logger.warning("SigLIP folder not found! Falling back to standard ViT-L-14 download...")
+        logger.warning(f"SigLIP folder not found at {local_siglip_folder}. Falling back to ViT-L-14 download...")
         _model, _, _preprocess = open_clip.create_model_and_transforms(
             "ViT-L-14",
             pretrained="openai",

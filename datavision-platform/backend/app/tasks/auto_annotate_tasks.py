@@ -66,7 +66,7 @@ def run_grounding_dino(self, image_ids: list[str], text_prompt: str, box_thresho
 
         return {"total_annotations": total_annotations, "images_processed": len(image_ids)}
 
-    return asyncio.get_event_loop().run_until_complete(_process())
+    return asyncio.run(_process())
 
 
 @celery_app.task(name="app.tasks.auto_annotate_tasks.run_sam2_predict", bind=True)
@@ -113,35 +113,51 @@ def run_sam2_predict(self, image_id: str, box_prompts: list | None, point_prompt
 
         return {"masks_generated": len(masks)}
 
-    return asyncio.get_event_loop().run_until_complete(_process())
+    return asyncio.run(_process())
 
 
 @celery_app.task(name="app.tasks.auto_annotate_tasks.run_clip_search", bind=True)
 def run_clip_search(self, image_id: str, crop_bbox: dict, top_k: int, threshold: float):
-    """Run CLIP visual similarity search."""
-    from app.services.auto_annotate.clip_search import search_similar
+    """Run CLIP visual similarity search. Auto-builds FAISS index if not found."""
+    from app.services.auto_annotate.clip_search import search_similar, build_faiss_index
     from app.database import async_session
     from app.models.image import Image
     import asyncio
     from sqlalchemy import select
 
-    async def _process():
+    async def _get_image():
         async with async_session() as db:
             result = await db.execute(select(Image).where(Image.id == image_id))
             img = result.scalar_one_or_none()
             if not img:
-                return {"error": "Image not found"}
+                return None, None
+            return img.project_id, img.filepath
 
-            results = search_similar(
-                str(img.project_id),
-                img.filepath,
-                crop_bbox,
-                top_k,
-                threshold,
-            )
-            return {"results": results, "total": len(results)}
+    async def _get_all_images(project_id):
+        async with async_session() as db:
+            result = await db.execute(select(Image).where(Image.project_id == project_id))
+            images = result.scalars().all()
+            return [
+                {"id": str(i.id), "filepath": i.filepath, "width": i.width, "height": i.height}
+                for i in images
+            ]
 
-    return asyncio.get_event_loop().run_until_complete(_process())
+    project_id, filepath = asyncio.run(_get_image())
+    if not project_id:
+        return {"error": "Image not found"}
+
+    try:
+        results = search_similar(str(project_id), filepath, crop_bbox, top_k, threshold)
+    except FileNotFoundError:
+        # FAISS index not built yet — build it automatically then search
+        logger.info(f"FAISS index missing for project {project_id}. Auto-building...")
+        images = asyncio.run(_get_all_images(project_id))
+        if not images:
+            return {"error": "No images in project to build index from"}
+        build_faiss_index(str(project_id), images)
+        results = search_similar(str(project_id), filepath, crop_bbox, top_k, threshold)
+
+    return {"results": results, "total": len(results)}
 
 
 @celery_app.task(name="app.tasks.auto_annotate_tasks.run_grounded_sam", bind=True)
@@ -199,7 +215,7 @@ def run_grounded_sam(
 
         return {"total_annotations": total, "images_processed": len(image_ids)}
 
-    return asyncio.get_event_loop().run_until_complete(_process())
+    return asyncio.run(_process())
 
 
 @celery_app.task(name="app.tasks.auto_annotate_tasks.build_clip_index", bind=True)
@@ -220,6 +236,6 @@ def build_clip_index(self, project_id: str):
                 for img in images
             ]
 
-    images = asyncio.get_event_loop().run_until_complete(_get_images())
+    images = asyncio.run(_get_images())
     index_path = build_faiss_index(project_id, images)
     return {"index_path": index_path, "images_indexed": len(images)}

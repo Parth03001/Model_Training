@@ -10,6 +10,9 @@ from pydantic_settings import BaseSettings
 # Base directory: datavision-platform/backend/
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Root of the entire repo (Model_Training/)
+REPO_ROOT = BASE_DIR.parent.parent
+
 
 class Settings(BaseSettings):
     # --- Database ---
@@ -28,6 +31,13 @@ class Settings(BaseSettings):
     model_dir: Path = BASE_DIR / "data" / "models"
     export_dir: Path = BASE_DIR / "data" / "exports"
     faiss_index_dir: Path = BASE_DIR / "data" / "faiss_indices"
+
+    # --- Downloaded HuggingFace model folder ---
+    # Place your models in: Model_Training/datavision_hf_model/
+    #   grounding-dino-base/
+    #   sam2-hiera-large/
+    #   siglip-so400m-patch14-384/
+    model_base_dir: Path = REPO_ROOT / "datavision_hf_model"
 
     # --- Grounding DINO ---
     grounding_dino_model: str = "IDEA-Research/grounding-dino-base"

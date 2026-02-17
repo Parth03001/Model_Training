@@ -44,14 +44,14 @@ def _load_model():
     from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
     from app.config import settings
 
-    # Check for local folder first (offline mode)
-    local_model_path = Path("grounding-dino-base")
+    # Check configured model_base_dir first, then fall back to HuggingFace download
+    local_model_path = settings.model_base_dir / "grounding-dino-base"
     model_id = str(local_model_path) if local_model_path.exists() else settings.grounding_dino_model
 
     if local_model_path.exists():
         logger.info(f"Loading Grounding DINO from local folder: {local_model_path}")
     else:
-        logger.info(f"Loading Grounding DINO: {model_id}")
+        logger.info(f"Local model not found at {local_model_path}, loading from HuggingFace: {model_id}")
 
     _processor = AutoProcessor.from_pretrained(model_id)
     _model = AutoModelForZeroShotObjectDetection.from_pretrained(model_id)
