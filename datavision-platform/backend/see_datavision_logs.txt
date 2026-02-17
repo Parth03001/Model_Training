@@ -1,0 +1,25 @@
+2/IMG_20260109_110615.jpg → 200 (109ms)
+INFO:     127.0.0.1:56896 - "GET /uploads/3e65e3dc-51f9-4502-9fd8-9a8698a007c2/IMG_20260109_110615.jpg HTTP/1.1" 200 OK
+11:42:56.851 | DEBUG    | logging:callHandlers:1706 — 1 change detected: {(<Change.modified: 2>, 'D:\\Model_Training\\datavision-platform\\backend\\data\\uploads')}
+11:42:56.961 | DEBUG    | app.main:log_requests:127 — GET /uploads/3e65e3dc-51f9-4502-9fd8-9a8698a007c2/IMG_20260109_110628_1.jpg → 200 (2ms)
+INFO:     127.0.0.1:51003 - "GET /uploads/3e65e3dc-51f9-4502-9fd8-9a8698a007c2/IMG_20260109_110628_1.jpg HTTP/1.1" 200 OK
+11:42:59.935 | INFO     | app.main:log_requests:131 — GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 → 200 (14ms)
+INFO:     127.0.0.1:59233 - "GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 HTTP/1.1" 200 OK
+11:43:02.597 | INFO     | app.main:log_requests:131 — GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 → 200 (2ms)
+INFO:     127.0.0.1:53548 - "GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 HTTP/1.1" 200 OK
+11:43:05.902 | INFO     | app.main:log_requests:131 — GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 → 200 (3ms)
+INFO:     127.0.0.1:50960 - "GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 HTTP/1.1" 200 OK
+11:43:08.596 | INFO     | app.main:log_requests:131 — GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 → 200 (3ms)
+INFO:     127.0.0.1:58665 - "GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 HTTP/1.1" 200 OK
+11:43:11.903 | INFO     | app.main:log_requests:131 — GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 → 200 (2ms)
+INFO:     127.0.0.1:57713 - "GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 HTTP/1.1" 200 OK
+11:43:14.596 | INFO     | app.main:log_requests:131 — GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 → 200 (3ms)
+INFO:     127.0.0.1:56310 - "GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 HTTP/1.1" 200 OK
+11:43:17.909 | INFO     | app.main:log_requests:131 — GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 → 200 (4ms)
+INFO:     127.0.0.1:49253 - "GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 HTTP/1.1" 200 OK
+11:43:20.597 | INFO     | app.main:log_requests:131 — GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 → 200 (3ms)
+INFO:     127.0.0.1:53795 - "GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 HTTP/1.1" 200 OK
+11:43:23.905 | INFO     | app.main:log_requests:131 — GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 → 200 (2ms)
+INFO:     127.0.0.1:61381 - "GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 HTTP/1.1" 200 OK
+11:43:26.972 | INFO     | app.main:log_requests:131 — GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 → 200 (3ms)
+INFO:     127.0.0.1:50603 - "GET /api/v1/auto-annotate/task/15297f22-8116-4a21-874a-c7146d4c6cc2 HTTP/1.1" 200 OK
