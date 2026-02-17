@@ -146,18 +146,3 @@ app.include_router(api_router, prefix="/api/v1")
 async def health_check():
     return {"status": "ok", "version": "0.1.0"}
 
-
-# ---------------------------------------------------------------------------
-# Run with: python main.py  (from datavision-platform/backend/)
-# ---------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(
-        "app.main:app",
-        host=settings.api_host,
-        port=settings.api_port,
-        reload=True,
-        log_level=settings.log_level.lower(),
-    )
