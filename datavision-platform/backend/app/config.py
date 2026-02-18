@@ -33,11 +33,11 @@ class Settings(BaseSettings):
     faiss_index_dir: Path = BASE_DIR / "data" / "faiss_indices"
 
     # --- Downloaded HuggingFace model folder ---
-    # Place your models in: Model_Training/datavision_hf_model/
+    # Place your models in: Model_Training/datavision_hf_models/
     #   grounding-dino-base/
     #   sam2-hiera-large/
     #   siglip-so400m-patch14-384/
-    model_base_dir: Path = REPO_ROOT / "datavision_hf_model"
+    model_base_dir: Path = REPO_ROOT / "datavision_hf_models"
 
     # --- Grounding DINO ---
     grounding_dino_model: str = "IDEA-Research/grounding-dino-base"

@@ -66,7 +66,8 @@ class CLIPSearchRequest(BaseModel):
     """Request for CLIP-based visual similarity search."""
     image_id: uuid.UUID
     crop_bbox: BBox
-    top_k: int = Field(default=20, ge=1, le=100)
+    class_name: str | None = None
+    top_k: int = Field(default=5, ge=1, le=100)
     threshold: float = Field(default=0.7, ge=0.0, le=1.0)
 
 
@@ -83,3 +84,10 @@ class AutoAnnotateResponse(BaseModel):
     task_id: str
     status: str = "queued"
     message: str
+
+
+class TrainedModelInferenceRequest(BaseModel):
+    """Request for auto-annotation using a project's latest trained model."""
+    project_id: uuid.UUID
+    confidence_threshold: float = Field(default=0.25, ge=0.0, le=1.0)
+    image_ids: list[uuid.UUID] | None = None  # None means all images without annotations

@@ -11,6 +11,7 @@ import { useRef, useEffect } from 'react';
 import { Rect, Text, Group, Transformer } from 'react-konva';
 import type { Annotation } from '../../types';
 import { getClassColor } from './colors';
+import { useAnnotationStore } from '../../store/useAnnotationStore';
 
 interface BoundingBoxProps {
   annotation: Annotation;
@@ -29,6 +30,7 @@ export default function BoundingBox({
 }: BoundingBoxProps) {
   const shapeRef = useRef<any>(null);
   const transformerRef = useRef<any>(null);
+  const { verifyAnnotation, deleteAnnotation, updateAnnotation } = useAnnotationStore();
 
   const bbox = annotation.bbox!;
   const color = getClassColor(annotation.class_name);
@@ -46,6 +48,59 @@ export default function BoundingBox({
     }
   }, [isSelected]);
 
+  const handleDragEnd = (e: any) => {
+    const node = e.target;
+    const newX = node.x();
+    const newY = node.y();
+
+    // Convert absolute top-left back to normalized center
+    const normalizedX = (newX + (w / 2)) / imageWidth;
+    const normalizedY = (newY + (h / 2)) / imageHeight;
+
+    updateAnnotation(annotation.id, {
+      bbox: {
+        ...bbox,
+        x: normalizedX,
+        y: normalizedY,
+      },
+    });
+  };
+
+  const handleTransformEnd = () => {
+    const node = shapeRef.current;
+    const scaleX = node.scaleX();
+    const scaleY = node.scaleY();
+
+    // Reset scale and apply to width/height
+    node.scaleX(1);
+    node.scaleY(1);
+
+    const newW = Math.max(5, node.width() * scaleX);
+    const newH = Math.max(5, node.height() * scaleY);
+    const newX = node.x();
+    const newY = node.y();
+
+    // Convert back to normalized center format
+    const normalizedW = newW / imageWidth;
+    const normalizedH = newH / imageHeight;
+    const normalizedX = (newX + (newW / 2)) / imageWidth;
+    const normalizedY = (newY + (newH / 2)) / imageHeight;
+
+    updateAnnotation(annotation.id, {
+      bbox: {
+        x: normalizedX,
+        y: normalizedY,
+        w: normalizedW,
+        h: normalizedH,
+      },
+    });
+  };
+
+  const handleTransform = () => {
+    // Force redraw of children (labels) while transforming
+    shapeRef.current.getLayer()?.batchDraw();
+  };
+
   const sourceLabel = annotation.source !== 'manual' ? ` [${annotation.source}]` : '';
   const confidenceLabel = annotation.confidence ? ` ${(annotation.confidence * 100).toFixed(0)}%` : '';
 
@@ -58,12 +113,17 @@ export default function BoundingBox({
         y={y}
         width={w}
         height={h}
-        stroke={color}
+        stroke={annotation.is_verified ? color : '#94a3b8'} // Grayish if unverified
         strokeWidth={2}
-        fill={`${color}15`}
+        dash={annotation.is_verified ? [] : [5, 5]} // Dashed if unverified
+        fill={annotation.is_verified ? `${color}15` : 'rgba(255, 255, 255, 0.01)'} // Ensure hit detection
         onClick={onSelect}
         onTap={onSelect}
         draggable={isSelected}
+        onDragEnd={handleDragEnd}
+        onTransform={handleTransform}
+        onTransformEnd={handleTransformEnd}
+        onDragMove={handleTransform}
       />
 
       {/* Class label */}
@@ -72,7 +132,7 @@ export default function BoundingBox({
         y={y - 20}
         width={annotation.class_name.length * 8 + (confidenceLabel.length * 7) + 16}
         height={20}
-        fill={color}
+        fill={annotation.is_verified ? color : '#64748b'}
         cornerRadius={[4, 4, 0, 0]}
       />
       <Text
@@ -83,6 +143,22 @@ export default function BoundingBox({
         fill="white"
         fontStyle="bold"
       />
+
+      {/* Accept/Reject actions for unverified AI annotations */}
+      {!annotation.is_verified && (
+        <Group x={x} y={y + h + 4}>
+          {/* Accept Button */}
+          <Group onClick={() => verifyAnnotation(annotation.id)}>
+            <Rect width={50} height={20} fill="#22c55e" cornerRadius={4} />
+            <Text x={5} y={5} text="Accept" fontSize={11} fill="white" fontStyle="bold" />
+          </Group>
+          {/* Reject Button */}
+          <Group x={55} onClick={() => deleteAnnotation(annotation.id)}>
+            <Rect width={50} height={20} fill="#ef4444" cornerRadius={4} />
+            <Text x={5} y={5} text="Reject" fontSize={11} fill="white" fontStyle="bold" />
+          </Group>
+        </Group>
+      )}
 
       {/* Transformer for resize handles */}
       {isSelected && (

@@ -56,8 +56,13 @@ export default function TrainingPage() {
   }, [projectId]);
 
   const handleStartTraining = async () => {
-    if (!projectId || !name.trim()) {
-      toast.error('Enter a job name');
+    if (!projectId) {
+      toast.error('No project selected. Please go to a project first.');
+      return;
+    }
+    
+    if (!name.trim()) {
+      toast.error('Please enter a unique name for this training job.');
       return;
     }
 

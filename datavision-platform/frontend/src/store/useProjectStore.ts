@@ -8,7 +8,7 @@ interface ProjectStore {
   loading: boolean;
 
   fetchProjects: () => Promise<void>;
-  setCurrentProject: (project: Project | null) => void;
+  setCurrentProject: (project: Project | string | null) => Promise<Project | null>;
   createProject: (data: { name: string; description?: string; task_type: string; classes: string[] }) => Promise<Project>;
   deleteProject: (id: string) => Promise<void>;
 }
@@ -28,7 +28,25 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     }
   },
 
-  setCurrentProject: (project) => set({ currentProject: project }),
+  setCurrentProject: async (projectOrId) => {
+    if (typeof projectOrId === 'string') {
+      const existing = get().projects.find(p => p.id === projectOrId);
+      if (existing) {
+        set({ currentProject: existing });
+        return existing;
+      }
+      // If not in local list, fetch it
+      try {
+        const res = await projectsApi.get(projectOrId);
+        set({ currentProject: res.data });
+        return res.data;
+      } catch {
+        return null;
+      }
+    }
+    set({ currentProject: projectOrId });
+    return projectOrId;
+  },
 
   createProject: async (data) => {
     const res = await projectsApi.create(data);

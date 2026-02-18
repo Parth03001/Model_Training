@@ -15,10 +15,10 @@ import AutoAnnotatePanel from '../components/Annotation/AutoAnnotatePanel';
 
 export default function AnnotationPage() {
   const { projectId } = useParams();
-  const { currentProject, setCurrentProject, fetchProjects, projects } = useProjectStore();
+  const { currentProject, setCurrentProject, fetchProjects } = useProjectStore();
   const { loadImages, setClasses } = useAnnotationStore();
   const [showAutoAnnotate, setShowAutoAnnotate] = useState(false);
-  const [autoAnnotateTab, setAutoAnnotateTab] = useState<'auto_annotate' | 'smart_select' | 'find_similar'>('auto_annotate');
+  const [autoAnnotateTab, setAutoAnnotateTab] = useState<'auto_label' | 'smart_select' | 'box_prompting'>('auto_label');
 
   // Canvas container ref for responsive sizing
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -27,20 +27,30 @@ export default function AnnotationPage() {
   // Load project and images
   useEffect(() => {
     if (projectId) {
-      if (!currentProject || currentProject.id !== projectId) {
-        fetchProjects().then(() => {
-          const project = projects.find((p) => p.id === projectId);
+      console.log('AnnotationPage: Loading project', projectId);
+      const load = async () => {
+        try {
+          // Always refresh images for the project
+          await loadImages(projectId);
+          
+          // Ensure project data is available
+          const project = await setCurrentProject(projectId);
           if (project) {
-            setCurrentProject(project);
+            console.log('AnnotationPage: Project set', project.name);
             setClasses(project.classes);
+          } else {
+            console.warn('AnnotationPage: Project not found, fetching list...');
+            await fetchProjects();
+            const p = await setCurrentProject(projectId);
+            if (p) setClasses(p.classes);
           }
-        });
-      } else {
-        setClasses(currentProject.classes);
-      }
-      loadImages(projectId);
+        } catch (err) {
+          console.error('AnnotationPage: Load failed', err);
+        }
+      };
+      load();
     }
-  }, [projectId]);
+  }, [projectId]); // Simplify dependencies to avoid race conditions
 
   // Responsive canvas sizing
   const updateCanvasSize = useCallback(() => {
@@ -93,9 +103,9 @@ export default function AnnotationPage() {
     <div className="flex h-full flex-col -m-4">
       {/* Toolbar */}
       <ToolBar
-        onAutoAnnotate={() => { setAutoAnnotateTab('auto_annotate'); setShowAutoAnnotate(!showAutoAnnotate); }}
+        onAutoAnnotate={() => { setAutoAnnotateTab('auto_label'); setShowAutoAnnotate(!showAutoAnnotate); }}
         onSmartSelect={() => { setAutoAnnotateTab('smart_select'); setShowAutoAnnotate(true); }}
-        onFindSimilar={() => { setAutoAnnotateTab('find_similar'); setShowAutoAnnotate(true); }}
+        onFindSimilar={() => { setAutoAnnotateTab('box_prompting'); setShowAutoAnnotate(true); }}
       />
 
       <div className="flex flex-1 overflow-hidden relative">

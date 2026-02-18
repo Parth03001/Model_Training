@@ -101,11 +101,15 @@ def detect(
     results = _processor.post_process_grounded_object_detection(
         outputs,
         inputs.input_ids,
-        box_threshold=box_threshold,
-        text_threshold=text_threshold,
+        threshold=box_threshold, # Correct argument is 'threshold'
         target_sizes=[(height, width)],
     )[0]
 
+    # Map labels to words in the prompt
+    # transformers' processor doesn't automatically map label integers back to prompt tokens
+    # in the 'labels' output of post_process_grounded_object_detection easily without help.
+    # However, it returns the strings in 'labels' if possible, otherwise we map.
+    
     detections = []
     for score, label, box in zip(results["scores"], results["labels"], results["boxes"]):
         x1, y1, x2, y2 = box.cpu().numpy()
@@ -116,8 +120,11 @@ def detect(
         w = (x2 - x1) / width
         h = (y2 - y1) / height
 
+        # The label returned by the processor is the string of the class matched
+        class_name = label if isinstance(label, str) else str(label)
+
         detections.append({
-            "class": label,
+            "class": class_name,
             "bbox": [float(cx), float(cy), float(w), float(h)],
             "confidence": float(score),
         })

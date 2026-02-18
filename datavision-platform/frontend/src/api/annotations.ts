@@ -42,6 +42,7 @@ export const annotationsApi = {
   clipSearch: (data: {
     image_id: string;
     crop_bbox: BBox;
+    class_name?: string;
     top_k: number;
     threshold: number;
   }) => api.post<TaskResponse>('/auto-annotate/clip-search', data),
@@ -56,6 +57,12 @@ export const annotationsApi = {
 
   buildClipIndex: (projectId: string) =>
     api.post<TaskResponse>(`/auto-annotate/build-index/${projectId}`),
+
+  autoAnnotateTrainedModel: (data: {
+    project_id: string;
+    confidence_threshold?: number;
+    image_ids?: string[];
+  }) => api.post<TaskResponse>('/auto-annotate/trained-model', data),
 
   getTaskStatus: (taskId: string) => api.get(`/auto-annotate/task/${taskId}`),
 };

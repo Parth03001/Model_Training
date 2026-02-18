@@ -52,24 +52,34 @@ def _load_model():
 
     try:
         from sam2.sam2_image_predictor import SAM2ImagePredictor
+        from sam2.build_sam2 import build_sam2
         from app.config import settings
+        import os
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        # Use local model folder if available, otherwise download from HuggingFace
+        # Use local model folder if available
         local_model_path = settings.model_base_dir / "sam2-hiera-large"
-        model_id = str(local_model_path) if local_model_path.exists() else settings.sam2_model
-
+        
         if local_model_path.exists():
-            logger.info(f"Loading SAM 2 from local folder: {local_model_path}")
+            checkpoint = os.path.abspath(str(local_model_path / "sam2_hiera_large.pt"))
+            model_cfg = os.path.abspath(str(local_model_path / "sam2_hiera_l.yaml"))
+            
+            if not os.path.exists(checkpoint) or not os.path.exists(model_cfg):
+                raise FileNotFoundError(f"Missing config or checkpoint in {local_model_path}")
+
+            logger.info(f"Building SAM 2 from local checkpoint: {checkpoint}")
+            # Some versions of SAM2 require the config file name, others the full path.
+            # We'll try to build it directly.
+            sam2_model = build_sam2(model_cfg, checkpoint, device=device)
+            _predictor = SAM2ImagePredictor(sam2_model)
+            logger.info("SAM 2 loaded successfully")
         else:
-            logger.info(f"Local SAM2 not found at {local_model_path}, loading from HuggingFace: {model_id}")
+            logger.warning("Local SAM2 checkpoint not found.")
+            _predictor = "stub"
 
-        _predictor = SAM2ImagePredictor.from_pretrained(model_id, device=device)
-        logger.info(f"SAM 2 loaded on {device}")
-
-    except ImportError:
-        logger.warning("SAM 2 not installed. Using fallback stub.")
+    except Exception as e:
+        logger.error(f"Failed to load SAM 2: {e}")
         _predictor = "stub"
 
 
@@ -126,24 +136,70 @@ def predict_from_boxes(
         for b in boxes
     ])
 
+    # Also generate center points to help SAM2 focus on the object vs background
+    input_points = np.array([
+        [int(b["x"] * width), int(b["y"] * height)]
+        for b in boxes
+    ])
+    input_labels = np.ones(len(boxes)) # All foreground
+
     # Predict masks — image encoding is cached, only the lightweight
     # mask decoder runs per box (~8ms each)
     results = []
     for i, box in enumerate(boxes):
+        # Using both box and point prompt is the "modern" way to get high precision
         masks, scores, _ = _predictor.predict(
+            point_coords=input_points[i:i+1],
+            point_labels=input_labels[i:i+1],
             box=input_boxes[i],
             multimask_output=True,
         )
 
         best_idx = np.argmax(scores)
+        best_mask = masks[best_idx]
+        
+        # Calculate tight bbox from the actual mask pixels
+        refined_bbox = _get_tight_bbox(best_mask, width, height) or box
+
         results.append({
-            "mask_rle": _mask_to_rle(masks[best_idx]),
+            "mask_rle": _mask_to_rle(best_mask),
             "iou_score": float(scores[best_idx]),
-            "bbox": box,
+            "bbox": refined_bbox,
         })
 
-    logger.info(f"SAM 2: Generated {len(results)} masks from box prompts")
+    logger.info(f"SAM 2: Generated {len(results)} masks and refined boxes")
     return results
+
+
+def _get_tight_bbox(mask: np.ndarray, width: int, height: int) -> dict | None:
+    """Calculate perfect [cx, cy, w, h] by finding the largest connected component's bbox."""
+    from scipy.ndimage import label
+    
+    # Filter small noise fragments that make boxes too large
+    structure = np.ones((3, 3), dtype=int)
+    labeled, n_components = label(mask, structure=structure)
+    
+    if n_components == 0:
+        return None
+        
+    # Find the largest component (usually the actual object)
+    component_sizes = np.bincount(labeled.ravel())
+    largest_idx = component_sizes[1:].argmax() + 1
+    tight_mask = (labeled == largest_idx)
+    
+    rows = np.any(tight_mask, axis=1)
+    cols = np.any(tight_mask, axis=0)
+    
+    rmin, rmax = np.where(rows)[0][[0, -1]]
+    cmin, cmax = np.where(cols)[0][[0, -1]]
+    
+    # 0.5px offset for sub-pixel precision
+    bw = (cmax - cmin + 1) / width
+    bh = (rmax - rmin + 1) / height
+    cx = (cmin + cmax + 1) / (2 * width)
+    cy = (rmin + rmax + 1) / (2 * height)
+    
+    return {"x": cx, "y": cy, "w": bw, "h": bh}
 
 
 def predict_from_points(
@@ -181,9 +237,13 @@ def predict_from_points(
     )
 
     best_idx = np.argmax(scores)
+    best_mask = masks[best_idx]
+    refined_bbox = _get_tight_bbox(best_mask, width, height)
+
     return [{
-        "mask_rle": _mask_to_rle(masks[best_idx]),
+        "mask_rle": _mask_to_rle(best_mask),
         "iou_score": float(scores[best_idx]),
+        "bbox": refined_bbox
     }]
 
 

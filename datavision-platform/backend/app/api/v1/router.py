@@ -4,7 +4,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import projects, images, annotations, auto_annotate, training, models
 
-api_router = APIRouter()
+api_router = APIRouter(redirect_slashes=False)
 
 api_router.include_router(projects.router, prefix="/projects", tags=["Projects"])
 api_router.include_router(images.router, prefix="/images", tags=["Images"])

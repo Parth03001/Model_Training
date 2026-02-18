@@ -43,6 +43,13 @@ class _StubResult:
         self.status = "FAILURE"
         self._ready.set()
 
+    def update_state(self, state=None, meta=None):
+        """Mimics Celery's Task.update_state."""
+        if state:
+            self.status = state
+        if meta:
+            self.result = meta
+
 
 # Module-level store so AsyncResult lookups work across requests
 _task_results: dict[str, _StubResult] = {}
@@ -67,7 +74,8 @@ class _CeleryStub:
                 def _run():
                     try:
                         stub.status = "STARTED"
-                        result = fn(None, *a, **kw)
+                        # Pass stub as 'self' if the task is bound
+                        result = fn(stub, *a, **kw)
                         stub._set_result(result)
                     except Exception as e:
                         logger.exception(f"In-process task {fn.__name__} failed: {e}")
@@ -83,7 +91,8 @@ class _CeleryStub:
                 def _run():
                     try:
                         stub.status = "STARTED"
-                        result = fn(None, *args, **(kwargs or {}))
+                        # Pass stub as 'self'
+                        result = fn(stub, *args, **(kwargs or {}))
                         stub._set_result(result)
                     except Exception as e:
                         logger.exception(f"In-process task {fn.__name__} failed: {e}")

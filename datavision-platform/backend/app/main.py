@@ -97,6 +97,7 @@ app = FastAPI(
     description="Auto-annotation and model training platform for computer vision",
     version="0.1.0",
     lifespan=lifespan,
+    redirect_slashes=False,
 )
 
 

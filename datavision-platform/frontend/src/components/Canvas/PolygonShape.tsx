@@ -5,6 +5,7 @@
 import { Line, Circle, Group, Text, Rect } from 'react-konva';
 import type { Annotation } from '../../types';
 import { getClassColor } from './colors';
+import { useAnnotationStore } from '../../store/useAnnotationStore';
 
 interface PolygonShapeProps {
   annotation: Annotation;
@@ -21,6 +22,7 @@ export default function PolygonShape({
   isSelected,
   onSelect,
 }: PolygonShapeProps) {
+  const { verifyAnnotation, deleteAnnotation } = useAnnotationStore();
   const points = annotation.polygon_points!;
   const color = getClassColor(annotation.class_name);
 
@@ -37,9 +39,10 @@ export default function PolygonShape({
       <Line
         points={flatPoints}
         closed
-        fill={`${color}20`}
-        stroke={color}
+        fill={annotation.is_verified ? `${color}20` : 'transparent'}
+        stroke={annotation.is_verified ? color : '#94a3b8'}
         strokeWidth={isSelected ? 3 : 2}
+        dash={annotation.is_verified ? [] : [5, 5]}
       />
 
       {/* Vertex circles (when selected) */}
@@ -63,7 +66,7 @@ export default function PolygonShape({
         y={cy - 10}
         width={annotation.class_name.length * 8 + 12}
         height={18}
-        fill={color}
+        fill={annotation.is_verified ? color : '#64748b'}
         cornerRadius={4}
         opacity={0.9}
       />
@@ -75,6 +78,20 @@ export default function PolygonShape({
         fill="white"
         fontStyle="bold"
       />
+
+      {/* Accept/Reject actions for unverified AI annotations */}
+      {!annotation.is_verified && (
+        <Group x={cx - 50} y={cy + 12}>
+          <Group onClick={() => verifyAnnotation(annotation.id)}>
+            <Rect width={50} height={20} fill="#22c55e" cornerRadius={4} />
+            <Text x={5} y={5} text="Accept" fontSize={11} fill="white" fontStyle="bold" />
+          </Group>
+          <Group x={55} onClick={() => deleteAnnotation(annotation.id)}>
+            <Rect width={50} height={20} fill="#ef4444" cornerRadius={4} />
+            <Text x={5} y={5} text="Reject" fontSize={11} fill="white" fontStyle="bold" />
+          </Group>
+        </Group>
+      )}
     </Group>
   );
 }

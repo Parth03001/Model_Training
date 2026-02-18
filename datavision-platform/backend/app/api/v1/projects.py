@@ -16,7 +16,7 @@ from app.schemas.project import (
     ProjectListResponse,
 )
 
-router = APIRouter()
+router = APIRouter(redirect_slashes=False)
 
 
 def _project_to_response(project: Project, image_count: int = 0, annotated_count: int = 0) -> ProjectResponse:
@@ -34,7 +34,7 @@ def _project_to_response(project: Project, image_count: int = 0, annotated_count
     )
 
 
-@router.post("/", response_model=ProjectResponse, status_code=201)
+@router.post("", response_model=ProjectResponse, status_code=201)
 async def create_project(data: ProjectCreate, db: DbSession):
     project = Project(
         name=data.name,
@@ -48,7 +48,7 @@ async def create_project(data: ProjectCreate, db: DbSession):
     return _project_to_response(project)
 
 
-@router.get("/", response_model=ProjectListResponse)
+@router.get("", response_model=ProjectListResponse)
 async def list_projects(db: DbSession, skip: int = 0, limit: int = 50):
     result = await db.execute(select(Project).offset(skip).limit(limit))
     projects = result.scalars().all()

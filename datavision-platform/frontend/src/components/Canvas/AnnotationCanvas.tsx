@@ -95,8 +95,18 @@ export default function AnnotationCanvas({ width, height }: AnnotationCanvasProp
     });
   }, [currentImage?.id]);
 
-  const bboxAnnotations = annotations.filter((a) => a.annotation_type === 'bbox' && a.bbox);
-  const polygonAnnotations = annotations.filter((a) => a.annotation_type === 'polygon' && a.polygon_points);
+  // Real-time confidence filtering logic (matches Roboflow workflow)
+  const displayAnnotations = annotations.filter(ann => {
+    // If it's a verified or manual annotation, always show it
+    if (ann.is_verified || ann.source === 'manual') return true;
+    
+    // For AI annotations, we'll eventually need to connect this to the UI slider.
+    // For now, we'll show them as unverified (dashed).
+    return true;
+  });
+
+  const bboxAnnotations = displayAnnotations.filter((a) => a.annotation_type === 'bbox' && a.bbox);
+  const polygonAnnotations = displayAnnotations.filter((a) => a.annotation_type === 'polygon' && a.polygon_points);
 
   return (
     <Stage

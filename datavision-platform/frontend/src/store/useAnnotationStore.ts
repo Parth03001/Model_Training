@@ -41,7 +41,10 @@ interface AnnotationStore {
     source?: string;
   }) => Promise<void>;
   updateAnnotation: (id: string, data: Partial<Annotation>) => Promise<void>;
+  verifyAnnotation: (id: string) => Promise<void>;
   deleteAnnotation: (id: string) => Promise<void>;
+  batchVerify: (ids: string[]) => Promise<void>;
+  batchDelete: (ids: string[]) => Promise<void>;
   selectAnnotation: (id: string | null) => void;
 
   setActiveTool: (tool: AnnotationTool) => void;
@@ -121,11 +124,36 @@ export const useAnnotationStore = create<AnnotationStore>((set, get) => ({
     }));
   },
 
+  verifyAnnotation: async (id) => {
+    await annotationsApi.update(id, { is_verified: true });
+    set((s) => ({
+      annotations: s.annotations.map((a) => (a.id === id ? { ...a, is_verified: true } : a)),
+    }));
+  },
+
   deleteAnnotation: async (id) => {
     await annotationsApi.delete(id);
     set((s) => ({
       annotations: s.annotations.filter((a) => a.id !== id),
       selectedAnnotationId: s.selectedAnnotationId === id ? null : s.selectedAnnotationId,
+    }));
+  },
+
+  batchVerify: async (ids) => {
+    await annotationsApi.batchVerify(ids);
+    set((s) => ({
+      annotations: s.annotations.map((a) => (ids.includes(a.id) ? { ...a, is_verified: true } : a)),
+    }));
+  },
+
+  batchDelete: async (ids) => {
+    // Assuming backend supports batch delete or we call it multiple times
+    // The current API has batchDelete(imageId) but not batchDelete(ids). 
+    // We'll use individual deletes for now or update API.
+    await Promise.all(ids.map(id => annotationsApi.delete(id)));
+    set((s) => ({
+      annotations: s.annotations.filter((a) => !ids.includes(a.id)),
+      selectedAnnotationId: ids.includes(s.selectedAnnotationId || '') ? null : s.selectedAnnotationId,
     }));
   },
 

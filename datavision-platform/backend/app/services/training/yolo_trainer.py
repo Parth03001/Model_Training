@@ -183,7 +183,14 @@ def train(
         train_args.update(augmentation)
 
     # Setup Redis for real-time metric publishing
-    r = redis.Redis.from_url(settings.redis_url)
+    r = None
+    try:
+        r = redis.Redis.from_url(settings.redis_url)
+        r.ping()
+    except:
+        logger.warning("Redis unavailable — falling back to DB for training metrics")
+        r = None
+        
     channel = f"training:{job_id}:metrics"
 
     # Custom callback to publish metrics
@@ -193,7 +200,43 @@ def train(
             "train_loss": float(trainer.loss.item()) if hasattr(trainer, "loss") else 0,
             "learning_rate": float(trainer.lf(trainer.epoch)),
         }
-        r.publish(channel, json.dumps(metrics))
+        
+        # 1. Try Redis
+        if r:
+            try:
+                r.publish(channel, json.dumps(metrics))
+            except: pass
+            
+        # 2. Always update DB for persistence and non-Redis fallback
+        try:
+            from app.database import async_session_factory
+            import asyncio
+            from app.models.training_job import TrainingJob
+            from sqlalchemy import update
+            
+            async def _update_db():
+                async with async_session_factory() as db:
+                    await db.execute(
+                        update(TrainingJob)
+                        .where(TrainingJob.id == job_id)
+                        .values(
+                            current_epoch=trainer.epoch,
+                            metrics=json.dumps(metrics)
+                        )
+                    )
+                    await db.commit()
+            
+            # Since we're in a sync callback from YOLO thread, we need to run async in a loop
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(_update_db())
+                else:
+                    loop.run_until_complete(_update_db())
+            except RuntimeError:
+                asyncio.run(_update_db())
+        except Exception as e:
+            logger.error(f"Failed to update DB metrics: {e}")
 
     def on_val_end(validator):
         metrics = {
@@ -202,7 +245,36 @@ def train(
             "precision": float(validator.metrics.box.mp) if hasattr(validator.metrics, "box") else 0,
             "recall": float(validator.metrics.box.mr) if hasattr(validator.metrics, "box") else 0,
         }
-        r.publish(channel, json.dumps(metrics))
+        if r:
+            try:
+                r.publish(channel, json.dumps(metrics))
+            except: pass
+            
+        # Update DB with latest best metrics
+        try:
+            from app.database import async_session_factory
+            import asyncio
+            from app.models.training_job import TrainingJob
+            from sqlalchemy import update
+            
+            async def _update_db_val():
+                async with async_session_factory() as db:
+                    await db.execute(
+                        update(TrainingJob)
+                        .where(TrainingJob.id == job_id)
+                        .values(best_metrics=json.dumps(metrics))
+                    )
+                    await db.commit()
+            
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(_update_db_val())
+                else:
+                    loop.run_until_complete(_update_db_val())
+            except RuntimeError:
+                asyncio.run(_update_db_val())
+        except: pass
 
     model.add_callback("on_train_epoch_end", on_train_epoch_end)
     model.add_callback("on_val_end", on_val_end)

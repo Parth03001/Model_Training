@@ -153,7 +153,7 @@ def run_training_job(self, job_id: str):
                 logger.error(f"Training job {job_id} failed: {e}")
                 raise
 
-    return asyncio.get_event_loop().run_until_complete(_run())
+    return asyncio.run(_run())
 
 
 @celery_app.task(name="app.tasks.training_tasks.run_model_export", bind=True)
@@ -213,4 +213,4 @@ def run_model_export(self, model_id: str, formats: list[str], img_size: int, qua
 
             return export_results
 
-    return asyncio.get_event_loop().run_until_complete(_export())
+    return asyncio.run(_export())

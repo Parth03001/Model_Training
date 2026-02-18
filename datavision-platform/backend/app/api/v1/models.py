@@ -12,7 +12,7 @@ from app.schemas.model import TrainedModelResponse, ModelListResponse
 router = APIRouter()
 
 
-@router.get("/", response_model=ModelListResponse)
+@router.get("", response_model=ModelListResponse)
 async def list_models(
     db: DbSession,
     project_id: uuid.UUID | None = None,

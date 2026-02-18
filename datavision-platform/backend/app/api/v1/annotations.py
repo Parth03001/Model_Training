@@ -15,7 +15,7 @@ from app.schemas.annotation import (
     AnnotationResponse,
 )
 
-router = APIRouter()
+router = APIRouter(redirect_slashes=False)
 
 
 def _annotation_to_response(ann: Annotation) -> AnnotationResponse:
@@ -42,7 +42,7 @@ def _annotation_to_response(ann: Annotation) -> AnnotationResponse:
     )
 
 
-@router.post("/", response_model=AnnotationResponse, status_code=201)
+@router.post("", response_model=AnnotationResponse, status_code=201)
 async def create_annotation(data: AnnotationCreate, db: DbSession):
     ann = Annotation(
         image_id=data.image_id,

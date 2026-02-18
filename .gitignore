@@ -4,7 +4,6 @@ Wheel_Split/
 Wheel_Split_*/
 Wheel_*/
 datavision-platform/frontend/node_modules/
-*.png
 *.jpg
 datavision_hf_models/
 **__pycache__**

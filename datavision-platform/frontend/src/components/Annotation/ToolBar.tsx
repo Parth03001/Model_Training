@@ -63,10 +63,10 @@ export default function ToolBar({ onAutoAnnotate, onSmartSelect, onFindSimilar }
         <button
           onClick={onAutoAnnotate}
           className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-amber-400 hover:bg-surface-700 transition-colors"
-          title="Auto-Annotate (Grounding DINO + SAM)"
+          title="Auto Label (Guided Pipeline)"
         >
           <Wand2 size={16} />
-          <span className="hidden md:inline">Auto-Annotate</span>
+          <span className="hidden md:inline">Auto Label</span>
         </button>
         <button
           onClick={onSmartSelect}
@@ -79,10 +79,10 @@ export default function ToolBar({ onAutoAnnotate, onSmartSelect, onFindSimilar }
         <button
           onClick={onFindSimilar}
           className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-cyan-400 hover:bg-surface-700 transition-colors"
-          title="Find Similar (CLIP) — draw a box to search for similar objects"
+          title="Box Prompt (Similarity Search) — draw a box to search for similar objects"
         >
           <Search size={16} />
-          <span className="hidden md:inline">Find Similar</span>
+          <span className="hidden md:inline">Box Prompt</span>
         </button>
       </div>
 

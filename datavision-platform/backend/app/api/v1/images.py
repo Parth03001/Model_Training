@@ -14,7 +14,7 @@ from app.models.image import Image
 from app.models.annotation import Annotation
 from app.schemas.image import ImageResponse, ImageListResponse, ImageUploadResponse
 
-router = APIRouter()
+router = APIRouter(redirect_slashes=False)
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp"}
 

@@ -40,8 +40,8 @@ export default function DashboardPage() {
     }
   };
 
-  const openProject = (project: typeof projects[0]) => {
-    setCurrentProject(project);
+  const openProject = async (project: typeof projects[0]) => {
+    await setCurrentProject(project);
     navigate(`/annotate/${project.id}`);
   };
 

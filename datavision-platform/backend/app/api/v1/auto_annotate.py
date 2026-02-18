@@ -8,6 +8,7 @@ from app.schemas.annotation import (
     CLIPSearchRequest,
     GroundedSAMRequest,
     AutoAnnotateResponse,
+    TrainedModelInferenceRequest,
 )
 from app.tasks.auto_annotate_tasks import (
     run_grounding_dino,
@@ -15,9 +16,10 @@ from app.tasks.auto_annotate_tasks import (
     run_clip_search,
     run_grounded_sam,
     build_clip_index,
+    run_trained_model_inference,
 )
 
-router = APIRouter()
+router = APIRouter(redirect_slashes=False)
 
 
 @router.post("/grounding-dino", response_model=AutoAnnotateResponse)
@@ -85,6 +87,7 @@ async def clip_visual_search(request: CLIPSearchRequest):
     task = run_clip_search.delay(
         image_id=str(request.image_id),
         crop_bbox=request.crop_bbox.model_dump(),
+        class_name=request.class_name,
         top_k=request.top_k,
         threshold=request.threshold,
     )
@@ -132,6 +135,23 @@ async def build_project_clip_index(project_id: str):
         task_id=task.id,
         status="queued",
         message="CLIP FAISS index build queued",
+    )
+
+
+@router.post("/trained-model", response_model=AutoAnnotateResponse)
+async def auto_annotate_trained_model(request: TrainedModelInferenceRequest):
+    """
+    Run auto-labeling on unannotated images using the project's latest trained model.
+    """
+    task = run_trained_model_inference.delay(
+        project_id=str(request.project_id),
+        confidence_threshold=request.confidence_threshold,
+        image_ids=[str(id) for id in request.image_ids] if request.image_ids else None
+    )
+    return AutoAnnotateResponse(
+        task_id=task.id,
+        status="queued",
+        message="Trained model auto-labeling queued",
     )
 
 
